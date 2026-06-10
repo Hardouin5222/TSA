@@ -1,0 +1,11 @@
+from pydantic import Field
+
+from travel_shared.config import BaseServiceSettings, get_settings
+
+
+class GatewaySettings(BaseServiceSettings):
+    user_service_base_url: str = Field(alias="USER_SERVICE_BASE_URL")
+
+
+def get_gateway_settings() -> GatewaySettings:
+    return get_settings(GatewaySettings)  # type: ignore[return-value]
