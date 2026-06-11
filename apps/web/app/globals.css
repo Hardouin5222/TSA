@@ -534,7 +534,8 @@ select {
 
 .auth-page-shell,
 .account-page-shell,
-.results-page-shell {
+.results-page-shell,
+.cart-page-shell {
   min-height: 100vh;
   padding: 16px;
 }
@@ -988,6 +989,11 @@ select {
   width: 100%;
 }
 
+.selection-action-grid {
+  display: grid;
+  gap: 10px;
+}
+
 .ghost-action.compact {
   min-height: 48px;
 }
@@ -999,7 +1005,8 @@ select {
 
   .auth-page-shell,
   .account-page-shell,
-  .results-page-shell {
+  .results-page-shell,
+  .cart-page-shell {
     padding: 24px;
   }
 

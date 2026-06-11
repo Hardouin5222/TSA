@@ -72,6 +72,7 @@ Bu sayede:
 - [Flight Results Sprint](docs/flight-results-sprint.md)
 - [Cart Foundation](docs/cart-foundation.md)
 - [Cart Service Foundation](docs/cart-service-foundation.md)
+- [Checkout Foundation](docs/checkout-foundation.md)
 
 ## Monorepo Yapısı
 

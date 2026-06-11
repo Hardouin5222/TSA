@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo, useState } from "react";
 
 import { apiRequest } from "@/lib/api";
@@ -247,9 +248,14 @@ export function ResultsList({ data }: { data: FlightSearchEnvelope["data"] }) {
                   Bu kart bir sonraki sprintte gercek checkout akisi ve fiyat dogrulama ile genisleyecek.
                 </div>
               )}
-              <button className="primary-action selection-action" onClick={() => handleAddToCart(selectedOffer)} type="button">
-                {isAddingToCart ? "Sepete ekleniyor..." : "Secili teklifi sepete ekle"}
-              </button>
+              <div className="selection-action-grid">
+                <button className="primary-action selection-action" onClick={() => handleAddToCart(selectedOffer)} type="button">
+                  {isAddingToCart ? "Sepete ekleniyor..." : "Secili teklifi sepete ekle"}
+                </button>
+                <Link className="ghost-action selection-action" href="/cart">
+                  Sepete git
+                </Link>
+              </div>
             </>
           ) : (
             <p>Uygun sonuc bulunamadi. Filtreleri gevsetip tekrar deneyebilirsin.</p>
