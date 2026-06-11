@@ -64,6 +64,7 @@ Bu sayede:
 - [Sonraki Teknik Adım](docs/next-step-auth-foundation.md)
 - [Google VM Deployment](docs/gcp-vm-deployment.md)
 - [GitHub Kurulumu](docs/github-setup.md)
+- [Auth Foundation](docs/auth-foundation.md)
 
 ## Monorepo Yapısı
 
