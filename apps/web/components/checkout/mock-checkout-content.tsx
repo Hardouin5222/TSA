@@ -161,6 +161,16 @@ export function MockCheckoutContent({
             <button className="primary-action selection-action" disabled={isProcessing} onClick={handleConfirmAndCreateBooking} type="button">
               {isProcessing ? "Isleniyor..." : "Odemeyi tamamlandi varsay"}
             </button>
+            {booking ? (
+              <div className="selection-action-grid">
+                <Link className="ghost-action selection-action" href={`/bookings/${booking.booking_reference}`}>
+                  Rezervasyon detayina git
+                </Link>
+                <Link className="ghost-action selection-action" href="/account">
+                  Hesabim ekranina git
+                </Link>
+              </div>
+            ) : null}
           </aside>
         </div>
       </section>

@@ -30,3 +30,44 @@ class BookingResponse(BaseModel):
     total_amount: float
     currency: str
     item_count: int
+
+
+class BookingItemResponse(BaseModel):
+    id: str
+    item_type: str
+    reference_id: str
+    title: str
+    quantity: int
+    unit_price: float
+    currency: str
+    item_payload: dict
+
+
+class BookingDetailResponse(BaseModel):
+    booking_id: str
+    booking_reference: str
+    status: str
+    total_amount: float
+    currency: str
+    item_count: int
+    provider_reference: str
+    cart_id: str
+    user_id: str | None
+    guest_session_id: str | None
+    created_at: str
+    items: list[BookingItemResponse]
+
+
+class BookingListItemResponse(BaseModel):
+    booking_id: str
+    booking_reference: str
+    status: str
+    total_amount: float
+    currency: str
+    item_count: int
+    created_at: str
+    primary_item_title: str
+
+
+class BookingListResponse(BaseModel):
+    bookings: list[BookingListItemResponse]

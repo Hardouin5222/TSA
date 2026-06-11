@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { apiRequest } from "@/lib/api";
 import { clearSession, getSession, type StoredSession } from "@/lib/auth";
 import { ShieldIcon, SparkIcon } from "@/components/ui/icons";
+import type { BookingListEnvelope } from "@/types/booking";
 
 type ProfileEnvelope = {
   success: boolean;
@@ -27,6 +28,7 @@ export function AccountPanel() {
   const router = useRouter();
   const [session, setSession] = useState<StoredSession | null>(null);
   const [profileState, setProfileState] = useState<ProfileEnvelope["data"] | null>(null);
+  const [bookings, setBookings] = useState<BookingListEnvelope["data"]["bookings"]>([]);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -45,6 +47,16 @@ export function AccountPanel() {
       })
       .catch((requestError) => {
         setError(requestError instanceof Error ? requestError.message : "Profile loading failed");
+      });
+
+    apiRequest<BookingListEnvelope>(`/api/bookings?user_id=${storedSession.user.id}`, {
+      token: storedSession.tokens.access_token,
+    })
+      .then((payload) => {
+        setBookings(payload.data.bookings);
+      })
+      .catch((requestError) => {
+        setError(requestError instanceof Error ? requestError.message : "Booking list loading failed");
       });
   }, []);
 
@@ -96,9 +108,55 @@ export function AccountPanel() {
             <strong>{displayUser.is_email_verified ? "Dogrulandi" : "Beklemede"}</strong>
             <span>E-posta dogrulamasi</span>
           </article>
+          <article className="account-stat">
+            <strong>{bookings.length}</strong>
+            <span>Toplam rezervasyon</span>
+          </article>
         </div>
 
         {error ? <div className="form-feedback error">{error}</div> : null}
+
+        <div className="results-list">
+          {bookings.length > 0 ? (
+            bookings.map((booking) => (
+              <article className="result-card active" key={booking.booking_reference}>
+                <div className="result-top-row">
+                  <div>
+                    <strong>{booking.primary_item_title}</strong>
+                    <p>Ref {booking.booking_reference}</p>
+                  </div>
+                  <div className="result-price">
+                    {new Intl.NumberFormat("tr-TR", {
+                      style: "currency",
+                      currency: booking.currency,
+                      maximumFractionDigits: 0,
+                    }).format(booking.total_amount)}
+                  </div>
+                </div>
+                <div className="result-detail-grid">
+                  <div>
+                    <span className="field-caption">Durum</span>
+                    <strong>{booking.status}</strong>
+                  </div>
+                  <div>
+                    <span className="field-caption">Urun</span>
+                    <strong>{booking.item_count}</strong>
+                  </div>
+                </div>
+                <div className="auth-cta-row">
+                  <Link className="ghost-action" href={`/bookings/${booking.booking_reference}`}>
+                    Detayi ac
+                  </Link>
+                </div>
+              </article>
+            ))
+          ) : (
+            <div className="account-stat">
+              <strong>Henuz rezervasyon yok</strong>
+              <span>Ilk rezervasyon olustugunda bu alanda booking referanslari gorunecek.</span>
+            </div>
+          )}
+        </div>
 
         <div className="auth-cta-row">
           <button className="ghost-action" onClick={handleLogout} type="button">
@@ -127,7 +185,7 @@ export function AccountPanel() {
           </div>
           <div>
             <strong>Siradaki hedef</strong>
-            <span>Rezervasyon listesi, son aramalar ve profil ayarlari bu panele eklenecek.</span>
+            <span>Son aramalar, yolcu listesi, odeme yontemleri ve iptal-iletisim adimlari eklenecek.</span>
           </div>
         </div>
       </section>

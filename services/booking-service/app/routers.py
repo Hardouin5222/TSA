@@ -1,11 +1,11 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db_session
 from app.schemas import CreateBookingFromPaymentRequest
-from app.service import create_booking_from_payment
+from app.service import create_booking_from_payment, get_booking_by_reference, list_bookings
 from travel_shared.responses import success_response
 
 router = APIRouter(prefix="/bookings", tags=["bookings"])
@@ -16,3 +16,19 @@ DbSession = Annotated[Session, Depends(get_db_session)]
 async def create_from_payment(payload: CreateBookingFromPaymentRequest, db: DbSession) -> dict:
     result = create_booking_from_payment(payload, db)
     return success_response(result.model_dump(), message="Booking created successfully")
+
+
+@router.get("/reference/{booking_reference}")
+async def get_by_reference(booking_reference: str, db: DbSession) -> dict:
+    result = get_booking_by_reference(booking_reference, db)
+    return success_response(result.model_dump(), message="Booking fetched successfully")
+
+
+@router.get("/")
+async def get_bookings(
+    user_id: str | None = Query(default=None),
+    guest_session_id: str | None = Query(default=None),
+    db: DbSession = Depends(get_db_session),
+) -> dict:
+    result = list_bookings(user_id, guest_session_id, db)
+    return success_response(result.model_dump(), message="Bookings fetched successfully")
