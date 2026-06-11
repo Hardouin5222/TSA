@@ -70,6 +70,12 @@ Eğer `.env` GitHub'a push edildi ise, secret'ları değiştirmemiz gerekir.
 5. Sunucuda gerçek `.env` oluştur
 6. `infra/scripts/deploy-vm.sh` çalıştır
 
+## Operasyon Notu
+
+Deploy script'i rebuild sonrasında `nginx` servisini yeniden başlatır ve temel healthcheck çağrısı yapar.
+
+Bu, container IP değişiminden kaynaklanabilen geçici `502 Bad Gateway` durumlarını azaltır.
+
 ## Sonraki Güçlendirme Adımları
 
 1. Domain bağlama

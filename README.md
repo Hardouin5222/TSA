@@ -65,6 +65,8 @@ Bu sayede:
 - [Google VM Deployment](docs/gcp-vm-deployment.md)
 - [GitHub Kurulumu](docs/github-setup.md)
 - [Auth Foundation](docs/auth-foundation.md)
+- [Web Foundation](docs/web-foundation.md)
+- [Web Auth Sprint](docs/web-auth-sprint.md)
 
 ## Monorepo Yapısı
 
