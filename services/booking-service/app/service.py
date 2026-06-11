@@ -1,10 +1,13 @@
+import logging
 from uuid import uuid4
 
+import httpx
 from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models import Booking, BookingItem
+from app.core.settings import get_booking_service_settings
 from app.schemas import (
     BookingDetailResponse,
     BookingItemResponse,
@@ -15,6 +18,9 @@ from app.schemas import (
     ClaimGuestBookingResponse,
     CreateBookingFromPaymentRequest,
 )
+
+settings = get_booking_service_settings()
+logger = logging.getLogger(__name__)
 
 
 def _get_booking_items(booking_id: str, db: Session) -> list[BookingItem]:
@@ -107,6 +113,7 @@ def create_booking_from_payment(payload: CreateBookingFromPaymentRequest, db: Se
 
     db.commit()
     db.refresh(booking)
+    _create_booking_confirmation_notification(booking, payload)
 
     return BookingResponse(
         booking_id=str(booking.id),
@@ -159,3 +166,39 @@ def claim_guest_bookings(payload: ClaimGuestBookingRequest, db: Session) -> Clai
 
     db.commit()
     return ClaimGuestBookingResponse(claimed_count=len(guest_bookings))
+
+
+def _create_booking_confirmation_notification(
+    booking: Booking,
+    payload: CreateBookingFromPaymentRequest,
+) -> None:
+    target_url = f"{settings.notification_service_base_url}/api/notifications/booking-confirmations"
+    notification_payload = {
+        "booking_reference": booking.booking_reference,
+        "booking_id": str(booking.id),
+        "user_id": booking.user_id,
+        "guest_session_id": booking.guest_session_id,
+        "channel": "email",
+        "recipient_email": payload.customer_email,
+        "recipient_phone": payload.customer_phone,
+        "locale": "tr-TR",
+        "currency": booking.currency,
+        "total_amount": float(booking.total_amount),
+        "booking_url": f"/bookings/{booking.booking_reference}",
+        "trip_summary": payload.items[0].title if payload.items else booking.booking_reference,
+    }
+
+    try:
+        with httpx.Client(timeout=5.0) as client:
+            response = client.post(target_url, json=notification_payload)
+            response.raise_for_status()
+    except Exception as exc:
+        logger.warning(
+            "booking_confirmation_notification_failed",
+            extra={
+                "booking_reference": booking.booking_reference,
+                "user_id": booking.user_id,
+                "guest_session_id": booking.guest_session_id,
+                "error": str(exc),
+            },
+        )

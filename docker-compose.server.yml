@@ -100,6 +100,7 @@ services:
       CART_SERVICE_BASE_URL: http://cart-service:8003
       PAYMENT_SERVICE_BASE_URL: http://payment-service:8004
       BOOKING_SERVICE_BASE_URL: http://booking-service:8005
+      NOTIFICATION_SERVICE_BASE_URL: http://notification-service:8006
       DATABASE_URL: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       REDIS_URL: redis://redis:6379/0
       RABBITMQ_URL: amqp://${RABBITMQ_DEFAULT_USER}:${RABBITMQ_DEFAULT_PASS}@rabbitmq:5672/
@@ -117,6 +118,8 @@ services:
       payment-service:
         condition: service_started
       booking-service:
+        condition: service_started
+      notification-service:
         condition: service_started
     restart: unless-stopped
 
@@ -203,6 +206,32 @@ services:
       APP_ENV: production
       DATABASE_URL: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       REDIS_URL: redis://redis:6379/5
+      RABBITMQ_URL: amqp://${RABBITMQ_DEFAULT_USER}:${RABBITMQ_DEFAULT_PASS}@rabbitmq:5672/
+      NOTIFICATION_SERVICE_BASE_URL: http://notification-service:8006
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      notification-service:
+        condition: service_started
+    restart: unless-stopped
+
+  notification-service:
+    build:
+      context: .
+      dockerfile: services/notification-service/Dockerfile
+    container_name: tsa-notification-service
+    env_file:
+      - .env
+    environment:
+      SERVICE_NAME: notification-service
+      SERVICE_PORT: 8006
+      APP_ENV: production
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      REDIS_URL: redis://redis:6379/6
       RABBITMQ_URL: amqp://${RABBITMQ_DEFAULT_USER}:${RABBITMQ_DEFAULT_PASS}@rabbitmq:5672/
     depends_on:
       postgres:

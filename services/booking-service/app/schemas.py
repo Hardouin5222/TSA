@@ -18,6 +18,8 @@ class CreateBookingFromPaymentRequest(BaseModel):
     cart_id: str = Field(min_length=1)
     user_id: str | None = None
     guest_session_id: str | None = None
+    customer_email: str | None = None
+    customer_phone: str | None = None
     total_amount: float = Field(gt=0)
     currency: str
     items: list[BookingSourceItem]

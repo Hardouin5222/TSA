@@ -9,6 +9,7 @@ class GatewaySettings(BaseServiceSettings):
     cart_service_base_url: str = Field(alias="CART_SERVICE_BASE_URL")
     payment_service_base_url: str = Field(alias="PAYMENT_SERVICE_BASE_URL")
     booking_service_base_url: str = Field(alias="BOOKING_SERVICE_BASE_URL")
+    notification_service_base_url: str = Field(alias="NOTIFICATION_SERVICE_BASE_URL")
 
 
 def get_gateway_settings() -> GatewaySettings:

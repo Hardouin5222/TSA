@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 
 import { apiRequest } from "@/lib/api";
+import { getSession } from "@/lib/auth";
 import type { BookingEnvelope } from "@/types/booking";
 import type { PaymentIntentEnvelope } from "@/types/payment";
 
@@ -65,6 +66,8 @@ export function MockCheckoutContent({
           cart_id: confirmed.data.cart_id,
           user_id: confirmed.data.user_id,
           guest_session_id: confirmed.data.guest_session_id,
+          customer_email: getSession()?.user.email || null,
+          customer_phone: getSession()?.user.phone_number || null,
           total_amount: confirmed.data.amount,
           currency: confirmed.data.currency,
           items: confirmed.data.items,

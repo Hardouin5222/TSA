@@ -35,6 +35,15 @@ export async function claimGuestAssets(session: StoredSession) {
       token,
       body,
     }),
+    apiRequest<ClaimResponse>("/api/notifications/claim-guest", {
+      method: "POST",
+      token,
+      body: {
+        ...body,
+        recipient_email: session.user.email,
+        recipient_phone: session.user.phone_number,
+      },
+    }),
   ]);
 
   clearGuestSessionId();
