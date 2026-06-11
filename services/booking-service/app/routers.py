@@ -26,9 +26,9 @@ async def get_by_reference(booking_reference: str, db: DbSession) -> dict:
 
 @router.get("/")
 async def get_bookings(
+    db: DbSession,
     user_id: str | None = Query(default=None),
     guest_session_id: str | None = Query(default=None),
-    db: DbSession = Depends(get_db_session),
 ) -> dict:
     result = list_bookings(user_id, guest_session_id, db)
     return success_response(result.model_dump(), message="Bookings fetched successfully")
