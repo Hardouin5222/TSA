@@ -68,6 +68,7 @@ Bu sayede:
 - [Web Foundation](docs/web-foundation.md)
 - [Web Auth Sprint](docs/web-auth-sprint.md)
 - [Web Deployment](docs/web-deployment.md)
+- [Flight Search Foundation](docs/flight-search-foundation.md)
 
 ## Monorepo Yapısı
 

@@ -21,6 +21,7 @@ services:
     environment:
       NODE_ENV: production
       NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL}
+      INTERNAL_API_BASE_URL: ${INTERNAL_API_BASE_URL}
     depends_on:
       - api-gateway
     restart: unless-stopped
@@ -95,8 +96,34 @@ services:
       SERVICE_PORT: 8000
       APP_ENV: production
       USER_SERVICE_BASE_URL: http://user-service:8001
+      FLIGHT_SERVICE_BASE_URL: http://flight-service:8002
       DATABASE_URL: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       REDIS_URL: redis://redis:6379/0
+      RABBITMQ_URL: amqp://${RABBITMQ_DEFAULT_USER}:${RABBITMQ_DEFAULT_PASS}@rabbitmq:5672/
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      flight-service:
+        condition: service_started
+    restart: unless-stopped
+
+  flight-service:
+    build:
+      context: .
+      dockerfile: services/flight-service/Dockerfile
+    container_name: tsa-flight-service
+    env_file:
+      - .env
+    environment:
+      SERVICE_NAME: flight-service
+      SERVICE_PORT: 8002
+      APP_ENV: production
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      REDIS_URL: redis://redis:6379/2
       RABBITMQ_URL: amqp://${RABBITMQ_DEFAULT_USER}:${RABBITMQ_DEFAULT_PASS}@rabbitmq:5672/
     depends_on:
       postgres:

@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools>=69.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "flight-service"
+version = "0.1.0"
+description = "Flight service for the Travel Super App."
+requires-python = ">=3.12"
+dependencies = [
+  "fastapi>=0.115.0,<1.0.0",
+  "pydantic-settings>=2.3.0,<3.0.0",
+  "structlog>=24.2.0,<25.0.0",
+  "uvicorn[standard]>=0.30.0,<1.0.0",
+  "travel-shared @ file:///app/packages/shared-python",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["app*"]
