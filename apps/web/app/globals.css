@@ -914,6 +914,13 @@ select {
   gap: 8px;
 }
 
+.result-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
 .result-tags span {
   display: inline-flex;
   padding: 8px 10px;
@@ -979,6 +986,10 @@ select {
 
 .selection-action {
   width: 100%;
+}
+
+.ghost-action.compact {
+  min-height: 48px;
 }
 
 @media (min-width: 768px) {

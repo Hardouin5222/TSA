@@ -2,7 +2,11 @@
 
 import { useMemo, useState } from "react";
 
-import type { FlightSearchEnvelope } from "@/types/flights";
+import { apiRequest } from "@/lib/api";
+import { getSession } from "@/lib/auth";
+import { getOrCreateGuestSessionId } from "@/lib/guest-session";
+import type { CartEnvelope } from "@/types/cart";
+import type { FlightOffer, FlightSearchEnvelope } from "@/types/flights";
 
 function formatTime(value: string) {
   const date = new Date(value);
@@ -26,6 +30,10 @@ export function ResultsList({ data }: { data: FlightSearchEnvelope["data"] }) {
   const [sortMode, setSortMode] = useState<SortMode>("recommended");
   const [directOnly, setDirectOnly] = useState(false);
   const [selectedOfferId, setSelectedOfferId] = useState<string | null>(data.offers[0]?.id ?? null);
+  const [cartState, setCartState] = useState<CartEnvelope["data"] | null>(null);
+  const [cartFeedback, setCartFeedback] = useState<string | null>(null);
+  const [cartError, setCartError] = useState<string | null>(null);
+  const [isAddingToCart, setIsAddingToCart] = useState(false);
 
   const visibleOffers = useMemo(() => {
     let offers = [...data.offers];
@@ -55,6 +63,34 @@ export function ResultsList({ data }: { data: FlightSearchEnvelope["data"] }) {
     data.offers.find((offer) => offer.id === selectedOfferId) ??
     visibleOffers[0] ??
     null;
+
+  async function handleAddToCart(offer: FlightOffer) {
+    setIsAddingToCart(true);
+    setCartError(null);
+    setCartFeedback(null);
+
+    try {
+      const session = getSession();
+      const guestSessionId = session ? null : getOrCreateGuestSessionId();
+
+      const payload = await apiRequest<CartEnvelope>("/api/cart/items/flight", {
+        method: "POST",
+        token: session?.tokens.access_token,
+        body: {
+          offer,
+          guest_session_id: guestSessionId,
+        },
+      });
+
+      setCartState(payload.data);
+      setCartFeedback(payload.message);
+      setSelectedOfferId(offer.id);
+    } catch (requestError) {
+      setCartError(requestError instanceof Error ? requestError.message : "Cart request failed");
+    } finally {
+      setIsAddingToCart(false);
+    }
+  }
 
   return (
     <section className="results-shell">
@@ -156,9 +192,14 @@ export function ResultsList({ data }: { data: FlightSearchEnvelope["data"] }) {
                       <span key={tag}>{tag}</span>
                     ))}
                   </div>
-                  <button className="primary-action compact" onClick={() => setSelectedOfferId(offer.id)} type="button">
-                    {isActive ? "Secildi" : "Bu teklifi sec"}
-                  </button>
+                  <div className="result-actions">
+                    <button className="ghost-action compact" onClick={() => setSelectedOfferId(offer.id)} type="button">
+                      {isActive ? "Secili" : "Incele"}
+                    </button>
+                    <button className="primary-action compact" onClick={() => handleAddToCart(offer)} type="button">
+                      {isAddingToCart && isActive ? "Ekleniyor..." : "Sepete ekle"}
+                    </button>
+                  </div>
                 </div>
               </article>
             );
@@ -194,11 +235,20 @@ export function ResultsList({ data }: { data: FlightSearchEnvelope["data"] }) {
                   <strong>{selectedOffer.package_score}/100</strong>
                 </div>
               </div>
-              <div className="selection-note">
-                Bu kart bir sonraki sprintte gercek `cart-service` ve checkout akisina baglanacak.
-              </div>
-              <button className="primary-action selection-action" type="button">
-                Sepete ekle foundation
+              {cartFeedback ? <div className="form-feedback success">{cartFeedback}</div> : null}
+              {cartError ? <div className="form-feedback error">{cartError}</div> : null}
+              {cartState ? (
+                <div className="selection-note">
+                  Aktif sepet: {cartState.items.length} urun • toplam{" "}
+                  {formatPrice(cartState.total_amount, cartState.currency)}
+                </div>
+              ) : (
+                <div className="selection-note">
+                  Bu kart bir sonraki sprintte gercek checkout akisi ve fiyat dogrulama ile genisleyecek.
+                </div>
+              )}
+              <button className="primary-action selection-action" onClick={() => handleAddToCart(selectedOffer)} type="button">
+                {isAddingToCart ? "Sepete ekleniyor..." : "Secili teklifi sepete ekle"}
               </button>
             </>
           ) : (

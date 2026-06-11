@@ -27,3 +27,5 @@ export type FlightSearchEnvelope = {
     }>;
   };
 };
+
+export type FlightOffer = FlightSearchEnvelope["data"]["offers"][number];
