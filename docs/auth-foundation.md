@@ -10,12 +10,16 @@
 - kullanıcı session tablosu
 - register endpoint
 - login endpoint
+- refresh endpoint
+- logout endpoint
 - bearer token ile `/users/me`
 
 ## Endpointler
 
 - `POST /api/auth/register`
 - `POST /api/auth/login`
+- `POST /api/auth/refresh`
+- `POST /api/auth/logout`
 - `GET /api/users/me`
 
 ## İlk migration
@@ -35,10 +39,8 @@ source .env
 
 ## Şu an bilinçli olarak henüz yapılmayanlar
 
-- refresh token rotation endpoint
-- logout / revoke endpoint
 - email verification
 - password reset
-- full permission enforcement
+- route bazlı tam permission enforcement
 
 Bunları sonraki auth sprintinde ekleyeceğiz.

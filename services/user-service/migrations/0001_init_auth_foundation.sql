@@ -71,3 +71,23 @@ VALUES
     ('customer', 'Customer', TRUE),
     ('admin', 'Administrator', TRUE)
 ON CONFLICT (code) DO NOTHING;
+
+INSERT INTO permissions (code, name)
+VALUES
+    ('profile.read', 'Read own profile'),
+    ('admin.access', 'Access admin panel')
+ON CONFLICT (code) DO NOTHING;
+
+INSERT INTO role_permissions (role_id, permission_id)
+SELECT r.id, p.id
+FROM roles r
+JOIN permissions p ON p.code = 'profile.read'
+WHERE r.code = 'customer'
+ON CONFLICT ON CONSTRAINT uq_role_permissions_role_permission DO NOTHING;
+
+INSERT INTO role_permissions (role_id, permission_id)
+SELECT r.id, p.id
+FROM roles r
+JOIN permissions p ON p.code IN ('profile.read', 'admin.access')
+WHERE r.code = 'admin'
+ON CONFLICT ON CONSTRAINT uq_role_permissions_role_permission DO NOTHING;

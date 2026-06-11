@@ -13,11 +13,13 @@ from app.core.security import (
     verify_password,
 )
 from app.core.settings import get_user_service_settings
+from app.models.rbac import Permission, Role, RolePermission, UserRole
 from app.models.user import User, UserSession
 from app.schemas.auth import (
     AuthResponse,
     AuthenticatedUserResponse,
     LoginRequest,
+    RefreshTokenRequest,
     RegisterRequest,
     TokenResponse,
 )
@@ -39,6 +41,7 @@ def register_user(payload: RegisterRequest, db: Session, request: Request) -> Au
     )
     db.add(user)
     db.flush()
+    _assign_default_customer_role(user.id, db)
 
     tokens = _create_session_tokens(user, db, request)
     db.commit()
@@ -79,6 +82,84 @@ def get_current_user_from_token(token: str, db: Session) -> User:
     if not user or user.deleted_at is not None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
     return user
+
+
+def refresh_user_tokens(payload: RefreshTokenRequest, db: Session, request: Request) -> TokenResponse:
+    try:
+        token_payload = jwt.decode(
+            payload.refresh_token,
+            settings.jwt_refresh_secret_key,
+            algorithms=[settings.jwt_algorithm],
+        )
+    except jwt.InvalidTokenError as exc:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh token") from exc
+
+    if token_payload.get("type") != "refresh":
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token type")
+
+    session = db.get(UserSession, token_payload["sid"])
+    if not session:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Session not found")
+    if session.revoked_at is not None:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Session revoked")
+    if session.expires_at <= datetime.now(UTC):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Session expired")
+    if session.refresh_token_jti != token_payload.get("jti"):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Refresh token rotated")
+
+    user = db.get(User, session.user_id)
+    if not user or user.deleted_at is not None:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
+
+    session.revoked_at = datetime.now(UTC)
+    tokens = _create_session_tokens(user, db, request)
+    db.commit()
+    return tokens
+
+
+def logout_user(payload: RefreshTokenRequest, db: Session) -> None:
+    try:
+        token_payload = jwt.decode(
+            payload.refresh_token,
+            settings.jwt_refresh_secret_key,
+            algorithms=[settings.jwt_algorithm],
+        )
+    except jwt.InvalidTokenError as exc:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh token") from exc
+
+    session = db.get(UserSession, token_payload["sid"])
+    if not session:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Session not found")
+
+    session.revoked_at = datetime.now(UTC)
+    db.commit()
+
+
+def get_user_permissions(user_id: str, db: Session) -> set[str]:
+    rows = db.execute(
+        select(
+            Permission.code,
+        )
+        .select_from(UserRole)
+        .join(RolePermission, RolePermission.role_id == UserRole.role_id)
+        .join(Permission, Permission.id == RolePermission.permission_id)
+        .where(UserRole.user_id == user_id)
+    )
+    return {row[0] for row in rows}
+
+
+def _assign_default_customer_role(user_id: str, db: Session) -> None:
+    customer_role = db.scalar(select(Role).where(Role.code == "customer"))
+    if not customer_role:
+        return
+
+    existing_link = db.scalar(
+        select(UserRole).where(UserRole.user_id == user_id, UserRole.role_id == customer_role.id)
+    )
+    if existing_link:
+        return
+
+    db.add(UserRole(user_id=user_id, role_id=customer_role.id))
 
 
 def _create_session_tokens(user: User, db: Session, request: Request) -> TokenResponse:
