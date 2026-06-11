@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-docker exec -i tsa-postgres psql -U "${POSTGRES_USER}" -d "${POSTGRES_DB}" \
-  < services/user-service/migrations/0001_init_auth_foundation.sql
+for migration in services/user-service/migrations/*.sql; do
+  echo "Applying migration: ${migration}"
+  docker exec -i tsa-postgres psql -v ON_ERROR_STOP=1 -U "${POSTGRES_USER}" -d "${POSTGRES_DB}" < "${migration}"
+done

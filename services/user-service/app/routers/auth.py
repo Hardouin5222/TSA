@@ -1,8 +1,21 @@
 from fastapi import APIRouter, Request, status
 
 from app.api.dependencies import DbSession
-from app.schemas.auth import LoginRequest, RefreshTokenRequest, RegisterRequest
-from app.services.auth_service import login_user, logout_user, refresh_user_tokens, register_user
+from app.schemas.auth import (
+    LoginRequest,
+    PasswordResetConfirmRequest,
+    PasswordResetRequest,
+    RefreshTokenRequest,
+    RegisterRequest,
+)
+from app.services.auth_service import (
+    confirm_password_reset,
+    login_user,
+    logout_user,
+    refresh_user_tokens,
+    register_user,
+    request_password_reset,
+)
 from travel_shared.responses import success_response
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -27,6 +40,21 @@ async def refresh(payload: RefreshTokenRequest, request: Request, db: DbSession)
 
 
 @router.post("/logout")
-async def logout(payload: RefreshTokenRequest, db: DbSession) -> dict:
-    logout_user(payload, db)
+async def logout(payload: RefreshTokenRequest, request: Request, db: DbSession) -> dict:
+    logout_user(payload, db, request)
     return success_response({"logged_out": True}, message="Logout successful")
+
+
+@router.post("/password-reset/request")
+async def password_reset_request(payload: PasswordResetRequest, request: Request, db: DbSession) -> dict:
+    request_password_reset(payload, db, request)
+    return success_response(
+        {"accepted": True},
+        message="If the account exists, a password reset flow has been initiated",
+    )
+
+
+@router.post("/password-reset/confirm")
+async def password_reset_confirm(payload: PasswordResetConfirmRequest, request: Request, db: DbSession) -> dict:
+    confirm_password_reset(payload, db, request)
+    return success_response({"password_reset": True}, message="Password reset completed successfully")

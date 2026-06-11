@@ -1,4 +1,6 @@
 from datetime import UTC, datetime, timedelta
+from hashlib import sha256
+from secrets import token_urlsafe
 
 import jwt
 from fastapi import HTTPException, Request, status
@@ -13,16 +15,20 @@ from app.core.security import (
     verify_password,
 )
 from app.core.settings import get_user_service_settings
+from app.models.password_reset import PasswordResetToken
 from app.models.rbac import Permission, Role, RolePermission, UserRole
 from app.models.user import User, UserSession
 from app.schemas.auth import (
     AuthResponse,
     AuthenticatedUserResponse,
     LoginRequest,
+    PasswordResetConfirmRequest,
+    PasswordResetRequest,
     RefreshTokenRequest,
     RegisterRequest,
     TokenResponse,
 )
+from app.services.audit_service import create_audit_log
 
 settings = get_user_service_settings()
 
@@ -44,6 +50,15 @@ def register_user(payload: RegisterRequest, db: Session, request: Request) -> Au
     _assign_default_customer_role(user.id, db)
 
     tokens = _create_session_tokens(user, db, request)
+    create_audit_log(
+        db,
+        event_type="auth.registered",
+        entity_type="user",
+        entity_id=str(user.id),
+        actor_user_id=str(user.id),
+        request=request,
+        metadata={"email": user.email},
+    )
     db.commit()
     db.refresh(user)
 
@@ -60,6 +75,14 @@ def login_user(payload: LoginRequest, db: Session, request: Request) -> AuthResp
 
     user.last_login_at = datetime.now(UTC)
     tokens = _create_session_tokens(user, db, request)
+    create_audit_log(
+        db,
+        event_type="auth.logged_in",
+        entity_type="user",
+        entity_id=str(user.id),
+        actor_user_id=str(user.id),
+        request=request,
+    )
     db.commit()
     db.refresh(user)
 
@@ -113,11 +136,19 @@ def refresh_user_tokens(payload: RefreshTokenRequest, db: Session, request: Requ
 
     session.revoked_at = datetime.now(UTC)
     tokens = _create_session_tokens(user, db, request)
+    create_audit_log(
+        db,
+        event_type="auth.tokens_refreshed",
+        entity_type="user_session",
+        entity_id=str(session.id),
+        actor_user_id=str(user.id),
+        request=request,
+    )
     db.commit()
     return tokens
 
 
-def logout_user(payload: RefreshTokenRequest, db: Session) -> None:
+def logout_user(payload: RefreshTokenRequest, db: Session, request: Request | None = None) -> None:
     try:
         token_payload = jwt.decode(
             payload.refresh_token,
@@ -132,6 +163,73 @@ def logout_user(payload: RefreshTokenRequest, db: Session) -> None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Session not found")
 
     session.revoked_at = datetime.now(UTC)
+    create_audit_log(
+        db,
+        event_type="auth.logged_out",
+        entity_type="user_session",
+        entity_id=str(session.id),
+        actor_user_id=str(session.user_id),
+        request=request,
+    )
+    db.commit()
+
+
+def request_password_reset(payload: PasswordResetRequest, db: Session, request: Request) -> None:
+    user = db.scalar(select(User).where(User.email == payload.email.lower(), User.deleted_at.is_(None)))
+    if user:
+        reset_token = token_urlsafe(32)
+        reset_token_hash = _hash_reset_token(reset_token)
+
+        db.execute(
+            PasswordResetToken.__table__.update()
+            .where(PasswordResetToken.user_id == user.id, PasswordResetToken.used_at.is_(None))
+            .values(is_revoked=True, updated_at=datetime.now(UTC))
+        )
+
+        db.add(
+            PasswordResetToken(
+                user_id=user.id,
+                token_hash=reset_token_hash,
+                expires_at=datetime.now(UTC) + timedelta(minutes=30),
+            )
+        )
+        create_audit_log(
+            db,
+            event_type="auth.password_reset_requested",
+            entity_type="user",
+            entity_id=str(user.id),
+            actor_user_id=str(user.id),
+            request=request,
+        )
+        db.commit()
+
+
+def confirm_password_reset(payload: PasswordResetConfirmRequest, db: Session, request: Request) -> None:
+    hashed_token = _hash_reset_token(payload.token)
+    reset_record = db.scalar(
+        select(PasswordResetToken).where(
+            PasswordResetToken.token_hash == hashed_token,
+            PasswordResetToken.used_at.is_(None),
+            PasswordResetToken.is_revoked.is_(False),
+        )
+    )
+    if not reset_record or reset_record.expires_at <= datetime.now(UTC):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid or expired reset token")
+
+    user = db.get(User, reset_record.user_id)
+    if not user or user.deleted_at is not None:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="User not found")
+
+    user.password_hash = hash_password(payload.new_password)
+    reset_record.used_at = datetime.now(UTC)
+    create_audit_log(
+        db,
+        event_type="auth.password_reset_completed",
+        entity_type="user",
+        entity_id=str(user.id),
+        actor_user_id=str(user.id),
+        request=request,
+    )
     db.commit()
 
 
@@ -184,3 +282,7 @@ def _create_session_tokens(user: User, db: Session, request: Request) -> TokenRe
     db.flush()
 
     return TokenResponse(access_token=access_token, refresh_token=refresh_token)
+
+
+def _hash_reset_token(token: str) -> str:
+    return sha256(token.encode("utf-8")).hexdigest()

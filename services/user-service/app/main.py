@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 
 from app.core.settings import get_user_service_settings
-from app.routers import auth, health, users
+from app.routers import admin, auth, health, users
 from travel_shared.logging import configure_logging
 from travel_shared.middleware import CorrelationIdMiddleware
 
@@ -15,6 +15,7 @@ app = FastAPI(
 )
 app.add_middleware(CorrelationIdMiddleware)
 
+app.include_router(admin.router, prefix=settings.api_prefix)
 app.include_router(auth.router, prefix=settings.api_prefix)
 app.include_router(health.router, prefix=settings.api_prefix)
 app.include_router(users.router, prefix=settings.api_prefix)
