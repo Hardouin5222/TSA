@@ -67,6 +67,7 @@ Bu sayede:
 - [Auth Foundation](docs/auth-foundation.md)
 - [Web Foundation](docs/web-foundation.md)
 - [Web Auth Sprint](docs/web-auth-sprint.md)
+- [Web Deployment](docs/web-deployment.md)
 
 ## Monorepo Yapısı
 

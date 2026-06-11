@@ -3,11 +3,26 @@ services:
     image: nginx:1.27-alpine
     container_name: tsa-nginx
     depends_on:
+      - web
       - api-gateway
     ports:
       - "80:80"
     volumes:
       - ./infra/nginx/server.conf:/etc/nginx/nginx.conf:ro
+    restart: unless-stopped
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    container_name: tsa-web
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+      NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL}
+    depends_on:
+      - api-gateway
     restart: unless-stopped
 
   postgres:
