@@ -11,13 +11,24 @@ def search_flights(payload: FlightSearchRequest) -> FlightSearchResponse:
     normalized_destination = payload.destination.strip().upper()
 
     providers = [
-        ("Duffel", "TK", "Turkish Airlines", 185.0, 0, "8 kg kabin + 20 kg bagaj"),
-        ("Travelfusion", "PC", "Pegasus", 121.0, 0, "8 kg kabin"),
-        ("Mystifly", "AJ", "AJet", 138.0, 1, "8 kg kabin + 15 kg bagaj"),
+        ("Duffel", "TK", "Turkish Airlines", 185.0, 0, "8 kg kabin + 20 kg bagaj", "Eco Flex", "Iadeli farkli kurallar", "79 cm", 92),
+        ("Travelfusion", "PC", "Pegasus", 121.0, 0, "8 kg kabin", "Light", "Degisiklik ucretli", "76 cm", 84),
+        ("Mystifly", "AJ", "AJet", 138.0, 1, "8 kg kabin + 15 kg bagaj", "Value", "Kismi iade kosullu", "78 cm", 88),
     ]
 
     offers: list[FlightOffer] = []
-    for index, (provider, code, airline, base_price, stop_count, baggage) in enumerate(providers):
+    for index, (
+        provider,
+        code,
+        airline,
+        base_price,
+        stop_count,
+        baggage,
+        fare_family,
+        cancellation_policy,
+        seat_pitch,
+        package_score,
+    ) in enumerate(providers):
         departure_time = base_departure + timedelta(minutes=index * 165)
         duration_minutes = 75 + (index * 20) + (stop_count * 65)
         arrival_time = departure_time + timedelta(minutes=duration_minutes)
@@ -43,6 +54,10 @@ def search_flights(payload: FlightSearchRequest) -> FlightSearchResponse:
                 stop_count=stop_count,
                 cabin_class=payload.cabin_class,
                 baggage_summary=baggage,
+                fare_family=fare_family,
+                cancellation_policy=cancellation_policy,
+                seat_pitch=seat_pitch,
+                package_score=package_score,
                 price_amount=round(dynamic_price, 2),
                 price_currency="EUR",
                 tags=tags,

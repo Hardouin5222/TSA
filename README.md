@@ -69,6 +69,8 @@ Bu sayede:
 - [Web Auth Sprint](docs/web-auth-sprint.md)
 - [Web Deployment](docs/web-deployment.md)
 - [Flight Search Foundation](docs/flight-search-foundation.md)
+- [Flight Results Sprint](docs/flight-results-sprint.md)
+- [Cart Foundation](docs/cart-foundation.md)
 
 ## Monorepo Yapısı
 

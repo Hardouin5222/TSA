@@ -17,6 +17,10 @@ export type FlightSearchEnvelope = {
       stop_count: number;
       cabin_class: string;
       baggage_summary: string;
+      fare_family: string;
+      cancellation_policy: string;
+      seat_pitch: string;
+      package_score: number;
       price_amount: number;
       price_currency: string;
       tags: string[];

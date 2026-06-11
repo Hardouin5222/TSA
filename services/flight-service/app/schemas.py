@@ -23,6 +23,10 @@ class FlightOffer(BaseModel):
     stop_count: int
     cabin_class: str
     baggage_summary: str
+    fare_family: str
+    cancellation_policy: str
+    seat_pitch: str
+    package_score: int
     price_amount: float
     price_currency: str
     tags: list[str]
