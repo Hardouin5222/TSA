@@ -5,6 +5,8 @@ import { FormEvent, useState } from "react";
 
 import { apiRequest } from "@/lib/api";
 import { saveSession } from "@/lib/auth";
+import { getGuestSessionId } from "@/lib/guest-session";
+import { claimGuestAssets } from "@/lib/session-bridge";
 import type { AuthEnvelope } from "@/types/auth";
 
 export function RegisterForm() {
@@ -31,6 +33,7 @@ export function RegisterForm() {
     try {
       const payload = await apiRequest<AuthEnvelope>("/api/auth/register", {
         method: "POST",
+        headers: getGuestSessionId() ? { "X-Guest-Session-Id": getGuestSessionId() as string } : undefined,
         body: {
           ...form,
           phone_number: form.phone_number || null,
@@ -38,6 +41,7 @@ export function RegisterForm() {
       });
 
       saveSession(payload.data);
+      await claimGuestAssets(payload.data);
       router.push("/account");
       router.refresh();
     } catch (submitError) {

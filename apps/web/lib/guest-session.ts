@@ -31,3 +31,27 @@ export function getOrCreateGuestSessionId(): string {
     return createGuestSessionId();
   }
 }
+
+export function getGuestSessionId(): string | null {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  try {
+    return window.localStorage.getItem(GUEST_STORAGE_KEY);
+  } catch {
+    return null;
+  }
+}
+
+export function clearGuestSessionId() {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  try {
+    window.localStorage.removeItem(GUEST_STORAGE_KEY);
+  } catch {
+    return;
+  }
+}

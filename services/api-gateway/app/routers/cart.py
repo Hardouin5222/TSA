@@ -44,3 +44,19 @@ async def get_current_cart(
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="Cart service request failed")
 
     return response.json()
+
+
+@router.post("/claim-guest")
+async def claim_guest_cart(payload: dict, authorization: str | None = Header(default=None)) -> dict:
+    target_url = f"{settings.cart_service_base_url}{settings.api_prefix}/cart/claim-guest"
+    headers = {"Content-Type": "application/json"}
+    if authorization:
+        headers["Authorization"] = authorization
+
+    async with httpx.AsyncClient(timeout=20.0) as client:
+        response = await client.post(target_url, json=payload, headers=headers)
+
+    if response.status_code >= 400:
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="Cart service request failed")
+
+    return response.json()

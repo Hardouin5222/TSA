@@ -11,6 +11,8 @@ from app.schemas import (
     BookingListItemResponse,
     BookingListResponse,
     BookingResponse,
+    ClaimGuestBookingRequest,
+    ClaimGuestBookingResponse,
     CreateBookingFromPaymentRequest,
 )
 
@@ -141,3 +143,19 @@ def list_bookings(user_id: str | None, guest_session_id: str | None, db: Session
     bookings = db.scalars(query).all()
     summaries = [_serialize_booking_summary(booking, _get_booking_items(booking.id, db)) for booking in bookings]
     return BookingListResponse(bookings=summaries)
+
+
+def claim_guest_bookings(payload: ClaimGuestBookingRequest, db: Session) -> ClaimGuestBookingResponse:
+    guest_bookings = db.scalars(
+        select(Booking).where(
+            Booking.guest_session_id == payload.guest_session_id,
+            Booking.user_id.is_(None),
+        )
+    ).all()
+
+    for booking in guest_bookings:
+        booking.user_id = payload.user_id
+        booking.guest_session_id = None
+
+    db.commit()
+    return ClaimGuestBookingResponse(claimed_count=len(guest_bookings))

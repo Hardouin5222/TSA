@@ -3,8 +3,8 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Query
 
 from app.dependencies import DbSession, get_optional_user_id
-from app.schemas import AddFlightToCartRequest
-from app.service import add_flight_to_cart, get_current_cart
+from app.schemas import AddFlightToCartRequest, ClaimGuestCartRequest
+from app.service import add_flight_to_cart, claim_guest_cart, get_current_cart
 from travel_shared.responses import success_response
 
 router = APIRouter(prefix="/cart", tags=["cart"])
@@ -28,3 +28,12 @@ async def current_cart(
 ) -> dict:
     result = get_current_cart(db, user_id, guest_session_id)
     return success_response(result.model_dump(), message="Cart fetched successfully")
+
+
+@router.post("/claim-guest")
+async def claim_guest(
+    payload: ClaimGuestCartRequest,
+    db: DbSession,
+) -> dict:
+    result = claim_guest_cart(payload, db)
+    return success_response(result.model_dump(), message="Guest cart claimed successfully")

@@ -7,6 +7,7 @@ export const INTERNAL_API_BASE_URL =
 type ApiOptions = {
   method?: "GET" | "POST";
   body?: unknown;
+  headers?: Record<string, string>;
   token?: string;
 };
 
@@ -16,6 +17,7 @@ export async function apiRequest<T>(path: string, options: ApiOptions = {}): Pro
     headers: {
       "Content-Type": "application/json",
       ...(options.token ? { Authorization: `Bearer ${options.token}` } : {}),
+      ...(options.headers || {}),
     },
     body: options.body ? JSON.stringify(options.body) : undefined,
     cache: "no-store",
@@ -40,6 +42,7 @@ export async function serverApiRequest<T>(path: string, options: ApiOptions = {}
     headers: {
       "Content-Type": "application/json",
       ...(options.token ? { Authorization: `Bearer ${options.token}` } : {}),
+      ...(options.headers || {}),
     },
     body: options.body ? JSON.stringify(options.body) : undefined,
     cache: "no-store",

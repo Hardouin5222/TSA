@@ -6,6 +6,8 @@ import { FormEvent, useState } from "react";
 
 import { apiRequest } from "@/lib/api";
 import { saveSession } from "@/lib/auth";
+import { getGuestSessionId } from "@/lib/guest-session";
+import { claimGuestAssets } from "@/lib/session-bridge";
 import type { AuthEnvelope } from "@/types/auth";
 
 export function LoginForm() {
@@ -23,10 +25,12 @@ export function LoginForm() {
     try {
       const payload = await apiRequest<AuthEnvelope>("/api/auth/login", {
         method: "POST",
+        headers: getGuestSessionId() ? { "X-Guest-Session-Id": getGuestSessionId() as string } : undefined,
         body: { email, password },
       });
 
       saveSession(payload.data);
+      await claimGuestAssets(payload.data);
       router.push("/account");
       router.refresh();
     } catch (submitError) {

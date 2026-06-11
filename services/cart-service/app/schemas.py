@@ -28,6 +28,11 @@ class AddFlightToCartRequest(BaseModel):
     guest_session_id: str | None = Field(default=None, max_length=100)
 
 
+class ClaimGuestCartRequest(BaseModel):
+    guest_session_id: str = Field(min_length=1, max_length=100)
+    user_id: str = Field(min_length=1, max_length=100)
+
+
 class CartItemResponse(BaseModel):
     id: str
     item_type: str
@@ -40,6 +45,16 @@ class CartItemResponse(BaseModel):
 
 
 class CartResponse(BaseModel):
+    cart_id: str
+    user_id: str | None
+    guest_session_id: str | None
+    status: str
+    currency: str
+    items: list[CartItemResponse]
+    total_amount: float
+
+
+class ClaimGuestCartResponse(BaseModel):
     cart_id: str
     user_id: str | None
     guest_session_id: str | None

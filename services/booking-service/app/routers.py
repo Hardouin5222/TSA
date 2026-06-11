@@ -4,8 +4,8 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db_session
-from app.schemas import CreateBookingFromPaymentRequest
-from app.service import create_booking_from_payment, get_booking_by_reference, list_bookings
+from app.schemas import ClaimGuestBookingRequest, CreateBookingFromPaymentRequest
+from app.service import claim_guest_bookings, create_booking_from_payment, get_booking_by_reference, list_bookings
 from travel_shared.responses import success_response
 
 router = APIRouter(prefix="/bookings", tags=["bookings"])
@@ -32,3 +32,9 @@ async def get_bookings(
 ) -> dict:
     result = list_bookings(user_id, guest_session_id, db)
     return success_response(result.model_dump(), message="Bookings fetched successfully")
+
+
+@router.post("/claim-guest")
+async def claim_guest(payload: ClaimGuestBookingRequest, db: DbSession) -> dict:
+    result = claim_guest_bookings(payload, db)
+    return success_response(result.model_dump(), message="Guest bookings claimed successfully")
