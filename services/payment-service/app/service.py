@@ -1,10 +1,16 @@
 from uuid import uuid4
 
+from fastapi import HTTPException, status
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.settings import get_payment_service_settings
 from app.models import PaymentIntent
-from app.schemas import CreatePaymentIntentRequest, PaymentIntentResponse
+from app.schemas import (
+    CreatePaymentIntentRequest,
+    PaymentIntentDetailResponse,
+    PaymentIntentResponse,
+)
 
 settings = get_payment_service_settings()
 
@@ -36,3 +42,39 @@ def create_payment_intent(payload: CreatePaymentIntentRequest, db: Session) -> P
         currency=payment_intent.currency,
         checkout_url=payment_intent.checkout_url,
     )
+
+
+def get_payment_intent(provider_reference: str, db: Session) -> PaymentIntentDetailResponse:
+    payment_intent = db.scalar(
+        select(PaymentIntent).where(PaymentIntent.provider_reference == provider_reference)
+    )
+    if not payment_intent:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Payment intent not found")
+
+    items = payment_intent.item_snapshot.get("items", [])
+    return PaymentIntentDetailResponse(
+        payment_intent_id=str(payment_intent.id),
+        provider=payment_intent.provider,
+        provider_reference=payment_intent.provider_reference,
+        status=payment_intent.status,
+        amount=float(payment_intent.amount),
+        currency=payment_intent.currency,
+        checkout_url=payment_intent.checkout_url,
+        cart_id=payment_intent.cart_id,
+        user_id=payment_intent.user_id,
+        guest_session_id=payment_intent.guest_session_id,
+        items=items,
+    )
+
+
+def confirm_payment_intent(provider_reference: str, db: Session) -> PaymentIntentDetailResponse:
+    payment_intent = db.scalar(
+        select(PaymentIntent).where(PaymentIntent.provider_reference == provider_reference)
+    )
+    if not payment_intent:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Payment intent not found")
+
+    payment_intent.status = "paid"
+    db.commit()
+    db.refresh(payment_intent)
+    return get_payment_intent(provider_reference, db)

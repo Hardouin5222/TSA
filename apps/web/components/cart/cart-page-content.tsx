@@ -155,6 +155,11 @@ export function CartPageContent() {
               <button className="primary-action selection-action" onClick={handleCreatePaymentIntent} type="button">
                 {isCreatingIntent ? "Odeme intent'i olusturuluyor..." : "Odeme adimina gec"}
               </button>
+              {paymentIntent ? (
+                <Link className="ghost-action selection-action" href={paymentIntent.checkout_url}>
+                  Mock checkout ekranina git
+                </Link>
+              ) : null}
             </aside>
           </div>
         ) : null}

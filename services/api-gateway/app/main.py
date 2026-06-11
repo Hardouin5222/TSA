@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 
+from app.routers.bookings import router as bookings_router
 from app.core.settings import get_gateway_settings
 from app.routers.cart import router as cart_router
 from app.routers import health, root
@@ -20,6 +21,7 @@ app.add_middleware(CorrelationIdMiddleware)
 
 app.include_router(root.router)
 app.include_router(health.router, prefix=settings.api_prefix)
+app.include_router(bookings_router, prefix=settings.api_prefix)
 app.include_router(cart_router, prefix=settings.api_prefix)
 app.include_router(flights_router, prefix=settings.api_prefix)
 app.include_router(payments_router, prefix=settings.api_prefix)

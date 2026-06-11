@@ -29,3 +29,10 @@ class PaymentIntentResponse(BaseModel):
     amount: float
     currency: str
     checkout_url: str
+
+
+class PaymentIntentDetailResponse(PaymentIntentResponse):
+    cart_id: str
+    user_id: str | None
+    guest_session_id: str | None
+    items: list[CheckoutCartItem]

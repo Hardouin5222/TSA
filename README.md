@@ -73,6 +73,7 @@ Bu sayede:
 - [Cart Foundation](docs/cart-foundation.md)
 - [Cart Service Foundation](docs/cart-service-foundation.md)
 - [Checkout Foundation](docs/checkout-foundation.md)
+- [Booking Foundation](docs/booking-foundation.md)
 
 ## Monorepo Yapısı
 
