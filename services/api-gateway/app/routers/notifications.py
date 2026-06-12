@@ -28,7 +28,7 @@ async def list_notifications(
     booking_reference: str | None = Query(default=None),
     user_id: str | None = Query(default=None),
 ) -> dict:
-    target_url = f"{settings.notification_service_base_url}{settings.api_prefix}/notifications"
+    target_url = f"{settings.notification_service_base_url}{settings.api_prefix}/notifications/"
 
     async with httpx.AsyncClient(timeout=20.0) as client:
         response = await client.get(
