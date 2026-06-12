@@ -24,6 +24,22 @@ class BookingTraveler(BaseModel):
     birth_date: str = Field(min_length=8)
 
 
+class BookingSpecialRequests(BaseModel):
+    seat_preference: str | None = None
+    meal_preference: str | None = None
+    accessibility_note: str | None = None
+
+
+class BookingBillingDetails(BaseModel):
+    invoice_type: str = Field(default="individual", min_length=1)
+    full_name: str = Field(min_length=1)
+    country: str = Field(min_length=1)
+    city: str = Field(min_length=1)
+    address_line: str = Field(min_length=1)
+    company_name: str | None = None
+    tax_number: str | None = None
+
+
 class CreateBookingFromPaymentRequest(BaseModel):
     payment_intent_id: str = Field(min_length=1)
     provider_reference: str = Field(min_length=1)
@@ -37,6 +53,8 @@ class CreateBookingFromPaymentRequest(BaseModel):
     items: list[BookingSourceItem]
     contact: BookingContact
     travelers: list[BookingTraveler] = Field(min_length=1)
+    special_requests: BookingSpecialRequests | None = None
+    billing_details: BookingBillingDetails
 
 
 class BookingResponse(BaseModel):
@@ -74,6 +92,8 @@ class BookingDetailResponse(BaseModel):
     items: list[BookingItemResponse]
     contact: BookingContact | None = None
     travelers: list[BookingTraveler] = Field(default_factory=list)
+    special_requests: BookingSpecialRequests | None = None
+    billing_details: BookingBillingDetails | None = None
 
 
 class BookingListItemResponse(BaseModel):

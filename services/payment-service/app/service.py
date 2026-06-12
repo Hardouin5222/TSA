@@ -29,6 +29,8 @@ def create_payment_intent(payload: CreatePaymentIntentRequest, db: Session) -> P
             "items": [item.model_dump() for item in payload.items],
             "contact": payload.contact.model_dump(),
             "travelers": [traveler.model_dump() for traveler in payload.travelers],
+            "special_requests": payload.special_requests.model_dump() if payload.special_requests else None,
+            "billing_details": payload.billing_details.model_dump(),
         },
         provider_reference=provider_reference,
         checkout_url=f"/checkout/mock/{provider_reference}",
@@ -58,6 +60,8 @@ def get_payment_intent(provider_reference: str, db: Session) -> PaymentIntentDet
     items = payment_intent.item_snapshot.get("items", [])
     contact = payment_intent.item_snapshot.get("contact", {})
     travelers = payment_intent.item_snapshot.get("travelers", [])
+    special_requests = payment_intent.item_snapshot.get("special_requests")
+    billing_details = payment_intent.item_snapshot.get("billing_details", {})
     return PaymentIntentDetailResponse(
         payment_intent_id=str(payment_intent.id),
         provider=payment_intent.provider,
@@ -72,6 +76,8 @@ def get_payment_intent(provider_reference: str, db: Session) -> PaymentIntentDet
         items=items,
         contact=contact,
         travelers=travelers,
+        special_requests=special_requests,
+        billing_details=billing_details,
     )
 
 

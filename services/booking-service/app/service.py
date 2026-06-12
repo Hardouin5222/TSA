@@ -9,12 +9,14 @@ from sqlalchemy.orm import Session
 from app.models import Booking, BookingItem
 from app.core.settings import get_booking_service_settings
 from app.schemas import (
+    BookingBillingDetails,
     BookingContact,
     BookingDetailResponse,
     BookingItemResponse,
     BookingListItemResponse,
     BookingListResponse,
     BookingResponse,
+    BookingSpecialRequests,
     BookingTraveler,
     ClaimGuestBookingRequest,
     ClaimGuestBookingResponse,
@@ -72,6 +74,12 @@ def _serialize_booking_detail(booking: Booking, items: list[BookingItem]) -> Boo
         items=[_serialize_booking_item(item) for item in items],
         contact=BookingContact(**checkout_context["contact"]) if checkout_context.get("contact") else None,
         travelers=[BookingTraveler(**traveler) for traveler in checkout_context.get("travelers", [])],
+        special_requests=BookingSpecialRequests(**checkout_context["special_requests"])
+        if checkout_context.get("special_requests")
+        else None,
+        billing_details=BookingBillingDetails(**checkout_context["billing_details"])
+        if checkout_context.get("billing_details")
+        else None,
     )
 
 
@@ -117,6 +125,8 @@ def create_booking_from_payment(payload: CreateBookingFromPaymentRequest, db: Se
                     "checkout_context": {
                         "contact": payload.contact.model_dump(),
                         "travelers": [traveler.model_dump() for traveler in payload.travelers],
+                        "special_requests": payload.special_requests.model_dump() if payload.special_requests else None,
+                        "billing_details": payload.billing_details.model_dump(),
                     },
                 },
             )

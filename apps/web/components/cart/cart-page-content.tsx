@@ -24,6 +24,16 @@ type TravelerForm = {
   birth_date: string;
 };
 
+type BillingForm = {
+  invoice_type: string;
+  full_name: string;
+  country: string;
+  city: string;
+  address_line: string;
+  company_name: string;
+  tax_number: string;
+};
+
 export function CartPageContent() {
   const [cart, setCart] = useState<CartEnvelope["data"] | null>(null);
   const [feedback, setFeedback] = useState<string | null>(null);
@@ -43,6 +53,20 @@ export function CartPageContent() {
       birth_date: "",
     },
   ]);
+  const [specialRequests, setSpecialRequests] = useState({
+    seat_preference: "",
+    meal_preference: "",
+    accessibility_note: "",
+  });
+  const [billingDetails, setBillingDetails] = useState<BillingForm>({
+    invoice_type: "individual",
+    full_name: "",
+    country: "Turkiye",
+    city: "",
+    address_line: "",
+    company_name: "",
+    tax_number: "",
+  });
 
   useEffect(() => {
     const session = getSession();
@@ -85,6 +109,11 @@ export function CartPageContent() {
       }
       return current;
     });
+    setBillingDetails((current) => ({
+      ...current,
+      full_name:
+        current.full_name || `${session.user.first_name} ${session.user.last_name}`.trim(),
+    }));
   }, []);
 
   const isCheckoutReady = useMemo(() => {
@@ -97,8 +126,15 @@ export function CartPageContent() {
           traveler.last_name.trim().length > 0 &&
           traveler.birth_date.trim().length >= 8,
       );
-    return hasContact && hasTravelers;
-  }, [contact, travelers]);
+    const hasBilling =
+      billingDetails.full_name.trim().length > 0 &&
+      billingDetails.country.trim().length > 0 &&
+      billingDetails.city.trim().length > 0 &&
+      billingDetails.address_line.trim().length > 0 &&
+      (billingDetails.invoice_type !== "company" ||
+        (billingDetails.company_name.trim().length > 0 && billingDetails.tax_number.trim().length > 0));
+    return hasContact && hasTravelers && hasBilling;
+  }, [contact, travelers, billingDetails]);
 
   function updateContactField(name: keyof typeof contact, value: string) {
     setContact((current) => ({ ...current, [name]: value }));
@@ -110,6 +146,17 @@ export function CartPageContent() {
         travelerIndex === index ? { ...traveler, [field]: value } : traveler,
       ),
     );
+  }
+
+  function updateSpecialRequestField(
+    field: keyof typeof specialRequests,
+    value: string,
+  ) {
+    setSpecialRequests((current) => ({ ...current, [field]: value }));
+  }
+
+  function updateBillingField(field: keyof BillingForm, value: string) {
+    setBillingDetails((current) => ({ ...current, [field]: value }));
   }
 
   function addTraveler() {
@@ -134,7 +181,7 @@ export function CartPageContent() {
     }
 
     if (!isCheckoutReady) {
-      setError("Odeme adimindan once iletisim ve yolcu bilgilerini tamamla.");
+      setError("Odeme adimindan once iletisim, yolcu ve fatura bilgilerini tamamla.");
       return;
     }
 
@@ -162,6 +209,20 @@ export function CartPageContent() {
             last_name: traveler.last_name.trim(),
             birth_date: traveler.birth_date,
           })),
+          special_requests: {
+            seat_preference: specialRequests.seat_preference || null,
+            meal_preference: specialRequests.meal_preference || null,
+            accessibility_note: specialRequests.accessibility_note || null,
+          },
+          billing_details: {
+            invoice_type: billingDetails.invoice_type,
+            full_name: billingDetails.full_name.trim(),
+            country: billingDetails.country.trim(),
+            city: billingDetails.city.trim(),
+            address_line: billingDetails.address_line.trim(),
+            company_name: billingDetails.company_name.trim() || null,
+            tax_number: billingDetails.tax_number.trim() || null,
+          },
         },
       });
 
@@ -305,6 +366,127 @@ export function CartPageContent() {
                       Yolcu ekle
                     </button>
                   </div>
+
+                  <article className="account-stat">
+                    <div className="result-top-row">
+                      <strong>Ozel istekler</strong>
+                      <span className="field-caption">Opsiyonel ama donusum icin faydali</span>
+                    </div>
+                    <div className="auth-split-grid">
+                      <label className="auth-field">
+                        <span>Koltuk tercihi</span>
+                        <select
+                          onChange={(event) => updateSpecialRequestField("seat_preference", event.target.value)}
+                          value={specialRequests.seat_preference}
+                        >
+                          <option value="">Secilmedi</option>
+                          <option value="window">Cam kenari</option>
+                          <option value="aisle">Koridor</option>
+                          <option value="front">On siralar</option>
+                        </select>
+                      </label>
+                      <label className="auth-field">
+                        <span>Yemek tercihi</span>
+                        <select
+                          onChange={(event) => updateSpecialRequestField("meal_preference", event.target.value)}
+                          value={specialRequests.meal_preference}
+                        >
+                          <option value="">Secilmedi</option>
+                          <option value="standard">Standart</option>
+                          <option value="vegetarian">Vejetaryen</option>
+                          <option value="child">Cocuk menusu</option>
+                        </select>
+                      </label>
+                    </div>
+                    <label className="auth-field">
+                      <span>Erisilebilirlik veya destek notu</span>
+                      <textarea
+                        onChange={(event) => updateSpecialRequestField("accessibility_note", event.target.value)}
+                        placeholder="Tekerlekli sandalye, yardim ihtiyaci, oncelikli destek..."
+                        rows={3}
+                        value={specialRequests.accessibility_note}
+                      />
+                    </label>
+                  </article>
+
+                  <article className="account-stat">
+                    <div className="result-top-row">
+                      <strong>Fatura bilgileri</strong>
+                      <span className="field-caption">Odeme sonrasi belge akisi icin hazirlik</span>
+                    </div>
+                    <div className="auth-split-grid">
+                      <label className="auth-field">
+                        <span>Fatura tipi</span>
+                        <select
+                          onChange={(event) => updateBillingField("invoice_type", event.target.value)}
+                          value={billingDetails.invoice_type}
+                        >
+                          <option value="individual">Bireysel</option>
+                          <option value="company">Sirket</option>
+                        </select>
+                      </label>
+                      <label className="auth-field">
+                        <span>Fatura unvani</span>
+                        <input
+                          onChange={(event) => updateBillingField("full_name", event.target.value)}
+                          placeholder="Ad Soyad veya sirket yetkilisi"
+                          required
+                          value={billingDetails.full_name}
+                        />
+                      </label>
+                    </div>
+                    <div className="auth-split-grid">
+                      <label className="auth-field">
+                        <span>Ulke</span>
+                        <input
+                          onChange={(event) => updateBillingField("country", event.target.value)}
+                          required
+                          value={billingDetails.country}
+                        />
+                      </label>
+                      <label className="auth-field">
+                        <span>Sehir</span>
+                        <input
+                          onChange={(event) => updateBillingField("city", event.target.value)}
+                          placeholder="Istanbul"
+                          required
+                          value={billingDetails.city}
+                        />
+                      </label>
+                    </div>
+                    <label className="auth-field">
+                      <span>Adres</span>
+                      <textarea
+                        onChange={(event) => updateBillingField("address_line", event.target.value)}
+                        placeholder="Mahalle, sokak, bina, ilce"
+                        required
+                        rows={3}
+                        value={billingDetails.address_line}
+                      />
+                    </label>
+                    {billingDetails.invoice_type === "company" ? (
+                      <div className="auth-split-grid">
+                        <label className="auth-field">
+                          <span>Sirket unvani</span>
+                          <input
+                            onChange={(event) => updateBillingField("company_name", event.target.value)}
+                            placeholder="ABC Turizm A.S."
+                            required
+                            value={billingDetails.company_name}
+                          />
+                        </label>
+                        <label className="auth-field">
+                          <span>Vergi no</span>
+                          <input
+                            onChange={(event) => updateBillingField("tax_number", event.target.value)}
+                            placeholder="1234567890"
+                            required
+                            value={billingDetails.tax_number}
+                          />
+                        </label>
+                      </div>
+                    ) : null}
+                  </article>
                 </form>
               </article>
 
@@ -351,6 +533,18 @@ export function CartPageContent() {
                 <div>
                   <span>Iletisim</span>
                   <strong>{contact.email ? "hazir" : "eksik"}</strong>
+                </div>
+                <div>
+                  <span>Fatura</span>
+                  <strong>{billingDetails.invoice_type === "company" ? "sirket" : "bireysel"}</strong>
+                </div>
+                <div>
+                  <span>Ozel istek</span>
+                  <strong>
+                    {specialRequests.seat_preference || specialRequests.meal_preference || specialRequests.accessibility_note
+                      ? "var"
+                      : "yok"}
+                  </strong>
                 </div>
               </div>
               {feedback ? <div className="form-feedback success">{feedback}</div> : null}

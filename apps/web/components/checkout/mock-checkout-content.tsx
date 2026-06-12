@@ -22,6 +22,20 @@ type PaymentIntentDetail = PaymentIntentEnvelope["data"] & {
     last_name: string;
     birth_date: string;
   }>;
+  special_requests?: {
+    seat_preference?: string | null;
+    meal_preference?: string | null;
+    accessibility_note?: string | null;
+  } | null;
+  billing_details: {
+    invoice_type: string;
+    full_name: string;
+    country: string;
+    city: string;
+    address_line: string;
+    company_name?: string | null;
+    tax_number?: string | null;
+  };
   items: Array<{
     id: string;
     item_type: string;
@@ -83,6 +97,8 @@ export function MockCheckoutContent({
           items: confirmed.data.items,
           contact: confirmed.data.contact,
           travelers: confirmed.data.travelers,
+          special_requests: confirmed.data.special_requests,
+          billing_details: confirmed.data.billing_details,
         },
       });
 
@@ -149,6 +165,38 @@ export function MockCheckoutContent({
                   <strong>{confirmedIntent.travelers.length}</strong>
                 </div>
               </div>
+              <div className="selection-note">
+                Fatura: {confirmedIntent.billing_details.invoice_type === "company" ? "Sirket" : "Bireysel"} •{" "}
+                {confirmedIntent.billing_details.full_name}
+                <br />
+                {confirmedIntent.billing_details.city}, {confirmedIntent.billing_details.country}
+              </div>
+              {confirmedIntent.special_requests &&
+              (confirmedIntent.special_requests.seat_preference ||
+                confirmedIntent.special_requests.meal_preference ||
+                confirmedIntent.special_requests.accessibility_note) ? (
+                <div className="selection-note">
+                  Ozel istekler
+                  {confirmedIntent.special_requests.seat_preference ? (
+                    <>
+                      <br />
+                      Koltuk: {confirmedIntent.special_requests.seat_preference}
+                    </>
+                  ) : null}
+                  {confirmedIntent.special_requests.meal_preference ? (
+                    <>
+                      <br />
+                      Yemek: {confirmedIntent.special_requests.meal_preference}
+                    </>
+                  ) : null}
+                  {confirmedIntent.special_requests.accessibility_note ? (
+                    <>
+                      <br />
+                      Not: {confirmedIntent.special_requests.accessibility_note}
+                    </>
+                  ) : null}
+                </div>
+              ) : null}
               <div className="selection-note">
                 {confirmedIntent.travelers.map((traveler, index) => (
                   <span key={`${traveler.first_name}-${traveler.last_name}-${index}`}>

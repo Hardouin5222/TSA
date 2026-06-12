@@ -24,6 +24,22 @@ class CheckoutTraveler(BaseModel):
     birth_date: str = Field(min_length=8)
 
 
+class CheckoutSpecialRequests(BaseModel):
+    seat_preference: str | None = None
+    meal_preference: str | None = None
+    accessibility_note: str | None = None
+
+
+class CheckoutBillingDetails(BaseModel):
+    invoice_type: str = Field(default="individual", min_length=1)
+    full_name: str = Field(min_length=1)
+    country: str = Field(min_length=1)
+    city: str = Field(min_length=1)
+    address_line: str = Field(min_length=1)
+    company_name: str | None = None
+    tax_number: str | None = None
+
+
 class CreatePaymentIntentRequest(BaseModel):
     cart_id: str = Field(min_length=1)
     user_id: str | None = None
@@ -33,6 +49,8 @@ class CreatePaymentIntentRequest(BaseModel):
     items: list[CheckoutCartItem]
     contact: CheckoutContact
     travelers: list[CheckoutTraveler] = Field(min_length=1)
+    special_requests: CheckoutSpecialRequests | None = None
+    billing_details: CheckoutBillingDetails
 
 
 class PaymentIntentResponse(BaseModel):
@@ -52,3 +70,5 @@ class PaymentIntentDetailResponse(PaymentIntentResponse):
     items: list[CheckoutCartItem]
     contact: CheckoutContact
     travelers: list[CheckoutTraveler]
+    special_requests: CheckoutSpecialRequests | None = None
+    billing_details: CheckoutBillingDetails

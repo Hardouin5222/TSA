@@ -129,6 +129,50 @@ export function BookingDetailContent({
           <aside className="selection-card">
             <span className="eyebrow">Booking Summary</span>
             <h2>Rezervasyon ozeti</h2>
+            {booking.special_requests &&
+            (booking.special_requests.seat_preference ||
+              booking.special_requests.meal_preference ||
+              booking.special_requests.accessibility_note) ? (
+              <div className="selection-grid">
+                <div>
+                  <span>Koltuk tercihi</span>
+                  <strong>{booking.special_requests.seat_preference || "-"}</strong>
+                </div>
+                <div>
+                  <span>Yemek tercihi</span>
+                  <strong>{booking.special_requests.meal_preference || "-"}</strong>
+                </div>
+                <div>
+                  <span>Destek notu</span>
+                  <strong>{booking.special_requests.accessibility_note || "-"}</strong>
+                </div>
+              </div>
+            ) : null}
+            {booking.billing_details ? (
+              <>
+                <div className="selection-grid">
+                  <div>
+                    <span>Fatura tipi</span>
+                    <strong>{booking.billing_details.invoice_type === "company" ? "Sirket" : "Bireysel"}</strong>
+                  </div>
+                  <div>
+                    <span>Fatura unvani</span>
+                    <strong>{booking.billing_details.full_name}</strong>
+                  </div>
+                  <div>
+                    <span>Sehir / Ulke</span>
+                    <strong>
+                      {booking.billing_details.city} / {booking.billing_details.country}
+                    </strong>
+                  </div>
+                  <div>
+                    <span>Vergi</span>
+                    <strong>{booking.billing_details.tax_number || "-"}</strong>
+                  </div>
+                </div>
+                <div className="selection-note">{booking.billing_details.address_line}</div>
+              </>
+            ) : null}
             <div className="selection-grid">
               <div>
                 <span>Durum</span>
