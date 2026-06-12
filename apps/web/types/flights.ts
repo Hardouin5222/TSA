@@ -5,6 +5,19 @@ export type FlightSearchEnvelope = {
     search_id: string;
     route_label: string;
     offers: Array<{
+      fare_options: Array<{
+        id: string;
+        label: string;
+        badge: string | null;
+        price_delta: number;
+        hand_baggage: string;
+        checked_baggage: string;
+        features: string[];
+        seat_selection: boolean;
+        refundable: boolean;
+        exchangeable: boolean;
+        meal_included: boolean;
+      }>;
       id: string;
       provider: string;
       airline_name: string;
@@ -23,6 +36,7 @@ export type FlightSearchEnvelope = {
       package_score: number;
       price_amount: number;
       price_currency: string;
+      selected_fare_option_id: string;
       tags: string[];
     }>;
   };

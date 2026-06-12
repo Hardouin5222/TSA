@@ -2,6 +2,19 @@ from pydantic import BaseModel, Field
 
 
 class FlightCartOffer(BaseModel):
+    class FareOption(BaseModel):
+        id: str
+        label: str
+        badge: str | None = None
+        price_delta: float
+        hand_baggage: str
+        checked_baggage: str
+        features: list[str]
+        seat_selection: bool = False
+        refundable: bool = False
+        exchangeable: bool = False
+        meal_included: bool = False
+
     id: str
     provider: str
     airline_name: str
@@ -21,6 +34,8 @@ class FlightCartOffer(BaseModel):
     price_amount: float
     price_currency: str
     tags: list[str]
+    selected_fare_option_id: str
+    fare_options: list[FareOption]
 
 
 class AddFlightToCartRequest(BaseModel):

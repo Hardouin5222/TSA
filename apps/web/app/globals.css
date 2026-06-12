@@ -1379,6 +1379,527 @@ textarea {
   gap: 8px;
 }
 
+.turna-shell {
+  display: grid;
+  gap: 18px;
+}
+
+.turna-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 82px;
+  padding: 18px 26px;
+  border: 1px solid rgba(20, 52, 45, 0.08);
+  border-radius: 28px;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 16px 38px rgba(20, 52, 45, 0.06);
+}
+
+.turna-brand,
+.turna-top-links,
+.turna-search-main,
+.turna-search-actions,
+.turna-offer-route,
+.turna-modal-footer {
+  display: flex;
+  align-items: center;
+}
+
+.turna-brand,
+.turna-top-links,
+.turna-search-main,
+.turna-search-actions {
+  gap: 16px;
+}
+
+.turna-menu-button {
+  display: grid;
+  gap: 4px;
+  width: 42px;
+  height: 42px;
+  padding: 10px;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+}
+
+.turna-menu-button span {
+  display: block;
+  height: 2px;
+  border-radius: 999px;
+  background: #16211f;
+}
+
+.turna-logo-lockup {
+  display: grid;
+  gap: 2px;
+}
+
+.turna-logo-lockup strong {
+  font-family: var(--font-display), serif;
+  font-size: 2rem;
+  line-height: 1;
+}
+
+.turna-logo-lockup span,
+.turna-top-links a:not(.turna-login-link),
+.turna-search-main span,
+.turna-search-actions button,
+.turna-offer-airline p,
+.turna-offer-route span,
+.turna-offer-route p,
+.turna-support-card p,
+.turna-cart-banner span,
+.turna-package-section span,
+.turna-package-section p,
+.turna-modal-summary span {
+  color: var(--muted);
+}
+
+.turna-top-links {
+  flex-wrap: wrap;
+}
+
+.turna-top-links a {
+  font-weight: 700;
+}
+
+.turna-login-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 42px;
+  padding: 0 20px;
+  border: 1px solid rgba(20, 52, 45, 0.14);
+  border-radius: 16px;
+  background: white;
+}
+
+.turna-body {
+  display: grid;
+  grid-template-columns: 60px minmax(0, 1fr);
+  gap: 18px;
+}
+
+.turna-vertical-nav {
+  display: grid;
+  align-content: start;
+  gap: 12px;
+  padding: 18px 0;
+  border: 1px solid rgba(20, 52, 45, 0.08);
+  border-radius: 28px;
+  background: rgba(255, 255, 255, 0.84);
+  box-shadow: 0 16px 38px rgba(20, 52, 45, 0.06);
+}
+
+.turna-vertical-nav span {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  min-height: 44px;
+  color: #16211f;
+}
+
+.turna-content {
+  display: grid;
+  gap: 18px;
+}
+
+.turna-search-strip,
+.turna-alarm-card,
+.turna-filter-card,
+.turna-date-tabs,
+.turna-sort-tabs,
+.turna-offer-card,
+.turna-support-card,
+.turna-cart-banner,
+.turna-modal {
+  border: 1px solid rgba(20, 52, 45, 0.08);
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 16px 38px rgba(20, 52, 45, 0.06);
+}
+
+.turna-search-strip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 18px 22px;
+  border-radius: 22px;
+}
+
+.turna-search-main {
+  flex-wrap: wrap;
+}
+
+.turna-search-main strong {
+  font-size: 1.25rem;
+}
+
+.turna-search-actions {
+  flex-wrap: wrap;
+}
+
+.turna-search-actions button,
+.turna-date-tabs button,
+.turna-sort-tabs button {
+  border: 0;
+  background: transparent;
+}
+
+.turna-search-actions button {
+  min-height: 42px;
+  padding: 0 12px;
+  font-weight: 700;
+}
+
+.turna-grid {
+  display: grid;
+  gap: 18px;
+}
+
+.turna-filter-column,
+.turna-results-column,
+.turna-support-column {
+  display: grid;
+  gap: 16px;
+  align-content: start;
+}
+
+.turna-alarm-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px;
+  border-radius: 18px;
+}
+
+.turna-alarm-card strong,
+.turna-support-card strong {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 1.15rem;
+}
+
+.turna-switch {
+  width: 42px;
+  height: 26px;
+  border-radius: 999px;
+  background: rgba(20, 52, 45, 0.12);
+}
+
+.turna-filter-card {
+  display: grid;
+  gap: 6px;
+  padding: 10px 18px;
+  border-radius: 18px;
+}
+
+.turna-filter-group {
+  border-bottom: 1px solid rgba(20, 52, 45, 0.08);
+}
+
+.turna-filter-group:last-child {
+  border-bottom: 0;
+}
+
+.turna-filter-group summary {
+  cursor: pointer;
+  list-style: none;
+  padding: 18px 0;
+  font-size: 1rem;
+  font-weight: 800;
+}
+
+.turna-filter-group summary::-webkit-details-marker {
+  display: none;
+}
+
+.turna-check-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 0 14px;
+}
+
+.turna-check-row input {
+  width: 22px;
+  height: 22px;
+}
+
+.turna-date-tabs,
+.turna-sort-tabs {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0;
+  overflow: hidden;
+  border-radius: 18px;
+}
+
+.turna-sort-tabs {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.turna-date-tabs button,
+.turna-sort-tabs button {
+  min-height: 56px;
+  padding: 0 16px;
+  border-right: 1px solid rgba(20, 52, 45, 0.08);
+  font-weight: 700;
+}
+
+.turna-date-tabs button:last-child,
+.turna-sort-tabs button:last-child {
+  border-right: 0;
+}
+
+.turna-date-tabs button.is-active,
+.turna-sort-tabs button.is-active {
+  color: white;
+  background: linear-gradient(135deg, var(--brand), #0c4a45);
+}
+
+.turna-results-stack {
+  display: grid;
+  gap: 16px;
+}
+
+.turna-offer-card {
+  display: grid;
+  border-radius: 22px;
+  overflow: hidden;
+}
+
+.turna-offer-card.is-featured {
+  box-shadow: 0 18px 46px rgba(15, 118, 110, 0.12);
+}
+
+.turna-offer-main {
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+}
+
+.turna-offer-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.turna-offer-badges span,
+.turna-package-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 28px;
+  padding: 0 10px;
+  border-radius: 10px;
+  color: white;
+  background: linear-gradient(135deg, var(--brand), #0c4a45);
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+
+.turna-offer-airline strong,
+.turna-package-card strong {
+  font-size: 1.2rem;
+}
+
+.turna-offer-route {
+  justify-content: space-between;
+  gap: 14px;
+  padding: 14px 0;
+  border-top: 1px dashed rgba(20, 52, 45, 0.12);
+  border-bottom: 1px dashed rgba(20, 52, 45, 0.12);
+}
+
+.turna-offer-route div {
+  display: grid;
+  gap: 4px;
+}
+
+.turna-offer-route strong {
+  font-size: 2rem;
+  line-height: 1;
+}
+
+.turna-offer-center {
+  display: grid;
+  gap: 8px;
+  min-width: 160px;
+  text-align: center;
+}
+
+.turna-offer-foot {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.turna-expand-chip {
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(20, 52, 45, 0.08);
+}
+
+.turna-offer-side {
+  display: grid;
+  gap: 14px;
+  align-content: center;
+  padding: 18px;
+  border-top: 1px solid rgba(20, 52, 45, 0.08);
+}
+
+.turna-offer-price {
+  font-size: 2rem;
+  font-weight: 800;
+  text-align: center;
+  color: #16211f;
+}
+
+.turna-select-button,
+.turna-primary-cta {
+  min-height: 54px;
+  border: 0;
+  border-radius: 16px;
+  color: white;
+  background: linear-gradient(135deg, var(--brand), #0c4a45);
+  font-size: 1.15rem;
+  font-weight: 800;
+}
+
+.turna-support-card {
+  display: grid;
+  gap: 12px;
+  justify-items: center;
+  padding: 22px;
+  border-radius: 18px;
+  text-align: center;
+}
+
+.turna-support-visual {
+  display: grid;
+  place-items: center;
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  color: var(--brand);
+  background: rgba(15, 118, 110, 0.08);
+  font-size: 2rem;
+}
+
+.turna-cart-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 14px 18px;
+  border-radius: 16px;
+}
+
+.turna-cart-banner a {
+  font-weight: 800;
+  color: var(--brand-strong);
+}
+
+.turna-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(16, 24, 22, 0.42);
+}
+
+.turna-modal {
+  width: min(100%, 980px);
+  display: grid;
+  gap: 20px;
+  padding: 22px;
+  border-radius: 28px;
+}
+
+.turna-modal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.turna-modal-head h3 {
+  margin: 0;
+  font-size: 1.8rem;
+  font-family: var(--font-display), serif;
+}
+
+.turna-modal-close {
+  width: 40px;
+  height: 40px;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(20, 52, 45, 0.08);
+  font-size: 1.6rem;
+}
+
+.turna-package-grid {
+  display: grid;
+  gap: 14px;
+}
+
+.turna-package-card {
+  display: grid;
+  gap: 18px;
+  padding: 16px;
+  border: 1px solid rgba(20, 52, 45, 0.1);
+  border-radius: 20px;
+  background: white;
+  text-align: left;
+}
+
+.turna-package-card.is-selected {
+  border-color: var(--brand);
+  box-shadow: 0 14px 32px rgba(15, 118, 110, 0.14);
+}
+
+.turna-package-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.turna-package-radio {
+  font-size: 1.3rem;
+  color: var(--brand-strong);
+}
+
+.turna-package-section {
+  display: grid;
+  gap: 8px;
+}
+
+.turna-package-price {
+  font-size: 1.8rem;
+  font-weight: 800;
+}
+
+.turna-modal-summary {
+  display: grid;
+  gap: 6px;
+}
+
+.turna-modal-summary strong {
+  font-size: 1.05rem;
+}
+
 .ghost-action.compact {
   min-height: 48px;
 }
@@ -1530,6 +2051,10 @@ textarea {
   .offer-card-timeline > div:last-child {
     text-align: right;
   }
+
+  .turna-package-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
 }
 
 @media (min-width: 1120px) {
@@ -1555,6 +2080,20 @@ textarea {
   .checkout-layout {
     grid-template-columns: minmax(0, 1fr) 360px;
   }
+
+  .turna-grid {
+    grid-template-columns: 300px minmax(0, 1fr) 250px;
+    align-items: start;
+  }
+
+  .turna-offer-card {
+    grid-template-columns: minmax(0, 1fr) 220px;
+  }
+
+  .turna-offer-side {
+    border-top: 0;
+    border-left: 1px solid rgba(20, 52, 45, 0.08);
+  }
 }
 
 @media (min-width: 1120px) {
@@ -1574,5 +2113,19 @@ textarea {
   .account-layout {
     grid-template-columns: 1.2fr 0.8fr;
     align-items: start;
+  }
+}
+
+@media (max-width: 1119px) {
+  .turna-body {
+    grid-template-columns: 1fr;
+  }
+
+  .turna-vertical-nav {
+    display: none;
+  }
+
+  .turna-top-links {
+    display: none;
   }
 }
