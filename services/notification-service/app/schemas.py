@@ -25,6 +25,10 @@ class NotificationResponse(BaseModel):
     recipient_email: str | None
     recipient_phone: str | None
     provider: str
+    subject: str | None = None
+    content_preview: str | None = None
+    provider_reference: str | None = None
+    sent_at: str | None = None
 
 
 class NotificationListItemResponse(BaseModel):
@@ -41,6 +45,14 @@ class NotificationListItemResponse(BaseModel):
 
 class NotificationListResponse(BaseModel):
     notifications: list[NotificationListItemResponse]
+
+
+class DispatchNotificationResponse(BaseModel):
+    notification_id: str
+    booking_reference: str
+    status: str
+    provider_reference: str | None
+    sent_at: str | None
 
 
 class ClaimGuestNotificationRequest(BaseModel):

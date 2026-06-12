@@ -1,8 +1,11 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
 
+import { apiRequest } from "@/lib/api";
 import type { BookingDetailEnvelope } from "@/types/booking";
+import type { NotificationDispatchEnvelope, NotificationListEnvelope } from "@/types/notification";
 
 function formatPrice(value: number, currency: string) {
   return new Intl.NumberFormat("tr-TR", {
@@ -22,7 +25,51 @@ function formatDate(value: string) {
   }).format(new Date(value));
 }
 
-export function BookingDetailContent({ booking }: { booking: BookingDetailEnvelope["data"] }) {
+export function BookingDetailContent({
+  booking,
+  notification,
+}: {
+  booking: BookingDetailEnvelope["data"];
+  notification: NotificationListEnvelope["data"]["notifications"][number] | null;
+}) {
+  const [notificationState, setNotificationState] = useState(notification);
+  const [notificationFeedback, setNotificationFeedback] = useState<string | null>(null);
+  const [notificationError, setNotificationError] = useState<string | null>(null);
+  const [isDispatching, setIsDispatching] = useState(false);
+
+  async function handleMockDispatch() {
+    if (!notificationState) {
+      return;
+    }
+
+    setIsDispatching(true);
+    setNotificationFeedback(null);
+    setNotificationError(null);
+
+    try {
+      const payload = await apiRequest<NotificationDispatchEnvelope>(
+        `/api/notifications/${notificationState.notification_id}/dispatch-mock`,
+        { method: "POST" },
+      );
+
+      setNotificationState((current) =>
+        current
+          ? {
+              ...current,
+              status: payload.data.status,
+              sent_at: payload.data.sent_at,
+              provider_reference: payload.data.provider_reference,
+            }
+          : current,
+      );
+      setNotificationFeedback(payload.message);
+    } catch (requestError) {
+      setNotificationError(requestError instanceof Error ? requestError.message : "Notification dispatch failed");
+    } finally {
+      setIsDispatching(false);
+    }
+  }
+
   return (
     <main className="cart-page-shell">
       <div className="results-breadcrumb">
@@ -105,6 +152,34 @@ export function BookingDetailContent({ booking }: { booking: BookingDetailEnvelo
               <br />
               Cart id: {booking.cart_id}
             </div>
+            <div className="selection-grid">
+              <div>
+                <span>Bildirim</span>
+                <strong>{notificationState?.status || "hazir degil"}</strong>
+              </div>
+              <div>
+                <span>Kanal</span>
+                <strong>{notificationState?.channel || "-"}</strong>
+              </div>
+              <div>
+                <span>Alici</span>
+                <strong>{notificationState?.recipient_email || notificationState?.recipient_phone || "-"}</strong>
+              </div>
+              <div>
+                <span>Template</span>
+                <strong>{notificationState?.template_code || "-"}</strong>
+              </div>
+            </div>
+            {notificationState?.content_preview ? (
+              <div className="selection-note">{notificationState.content_preview}</div>
+            ) : null}
+            {notificationFeedback ? <div className="form-feedback success">{notificationFeedback}</div> : null}
+            {notificationError ? <div className="form-feedback error">{notificationError}</div> : null}
+            {notificationState && notificationState.status !== "sent" ? (
+              <button className="ghost-action selection-action" disabled={isDispatching} onClick={handleMockDispatch} type="button">
+                {isDispatching ? "Bildirim gonderiliyor..." : "Mock email gonder"}
+              </button>
+            ) : null}
             <div className="selection-action-grid">
               <Link className="primary-action selection-action" href="/account">
                 Rezervasyonlarim ekranina git

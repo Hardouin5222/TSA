@@ -8,6 +8,7 @@ from app.schemas import ClaimGuestNotificationRequest, CreateBookingConfirmation
 from app.service import (
     claim_guest_notifications,
     create_booking_confirmation_notification,
+    dispatch_notification,
     list_notifications,
 )
 from travel_shared.responses import success_response
@@ -42,3 +43,9 @@ async def get_notifications(
 async def claim_guest_notifications_route(payload: ClaimGuestNotificationRequest, db: DbSession) -> dict:
     result = claim_guest_notifications(payload, db)
     return success_response(result.model_dump(), message="Guest notifications claimed successfully")
+
+
+@router.post("/{notification_id}/dispatch-mock")
+async def dispatch_notification_route(notification_id: str, db: DbSession) -> dict:
+    result = dispatch_notification(notification_id, db)
+    return success_response(result.model_dump(), message="Notification dispatched successfully")

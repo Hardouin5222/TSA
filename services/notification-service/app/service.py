@@ -1,3 +1,6 @@
+from datetime import UTC, datetime
+
+from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -6,6 +9,7 @@ from app.schemas import (
     ClaimGuestNotificationRequest,
     ClaimGuestNotificationResponse,
     CreateBookingConfirmationNotificationRequest,
+    DispatchNotificationResponse,
     NotificationListItemResponse,
     NotificationListResponse,
     NotificationResponse,
@@ -117,6 +121,28 @@ def claim_guest_notifications(
     return ClaimGuestNotificationResponse(claimed_count=len(notifications))
 
 
+def dispatch_notification(notification_id: str, db: Session) -> DispatchNotificationResponse:
+    notification = db.get(Notification, notification_id)
+    if not notification:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Notification not found")
+
+    if not notification.recipient_email and not notification.recipient_phone:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Notification recipient is missing")
+
+    notification.status = "sent"
+    notification.sent_at = datetime.now(UTC)
+    db.commit()
+    db.refresh(notification)
+
+    return DispatchNotificationResponse(
+        notification_id=str(notification.id),
+        booking_reference=notification.booking_reference,
+        status=notification.status,
+        provider_reference=notification.provider_reference,
+        sent_at=notification.sent_at.isoformat() if notification.sent_at else None,
+    )
+
+
 def _serialize_notification(notification: Notification) -> NotificationResponse:
     return NotificationResponse(
         notification_id=str(notification.id),
@@ -127,4 +153,8 @@ def _serialize_notification(notification: Notification) -> NotificationResponse:
         recipient_email=notification.recipient_email,
         recipient_phone=notification.recipient_phone,
         provider=notification.provider,
+        subject=notification.subject,
+        content_preview=notification.content_preview,
+        provider_reference=notification.provider_reference,
+        sent_at=notification.sent_at.isoformat() if notification.sent_at else None,
     )

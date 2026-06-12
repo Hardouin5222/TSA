@@ -12,6 +12,22 @@ export type NotificationListEnvelope = {
       recipient_phone: string | null;
       provider: string;
       created_at: string;
+      subject?: string | null;
+      content_preview?: string | null;
+      provider_reference?: string | null;
+      sent_at?: string | null;
     }>;
+  };
+};
+
+export type NotificationDispatchEnvelope = {
+  success: boolean;
+  message: string;
+  data: {
+    notification_id: string;
+    booking_reference: string;
+    status: string;
+    provider_reference: string | null;
+    sent_at: string | null;
   };
 };
