@@ -81,44 +81,57 @@ export function BookingDetailContent({
       </div>
 
       <section className="results-shell">
-        <div className="results-header-card">
-          <span className="eyebrow">Booking Detail</span>
-          <h1>{booking.booking_reference}</h1>
-          <p>
-            Rezervasyon olusturuldu. Bu ekran kullaniciya referans, durum, urun kirilimi ve toplam tutari tek
-            yerde gosterir.
-          </p>
+        <div className="checkout-stepper">
+          <div className="checkout-step is-complete">
+            <span>1</span>
+            <strong>Ucus secimi</strong>
+          </div>
+          <div className="checkout-step is-complete">
+            <span>2</span>
+            <strong>Yolcu bilgileri</strong>
+          </div>
+          <div className="checkout-step is-complete">
+            <span>3</span>
+            <strong>Rezervasyon tamam</strong>
+          </div>
         </div>
 
-        <div className="results-layout">
-          <section className="results-list">
+        <div className="results-header-card compact">
+          <span className="eyebrow">Booking Detail</span>
+          <h1>{booking.booking_reference}</h1>
+          <p>Rezervasyon artik olustu. Bu ekranda sadece kullanicinin tekrar bakacagi ana ozet ve destek bilgileri kalir.</p>
+        </div>
+
+        <div className="results-layout checkout-layout">
+          <section className="results-list checkout-main">
             {booking.items.map((item) => (
-              <article className="result-card active" key={item.id}>
-                <div className="result-top-row">
+              <article className="checkout-itinerary-card" key={item.id}>
+                <div className="checkout-itinerary-header">
                   <div>
-                    <strong>{item.title}</strong>
+                    <span className="eyebrow">Urun</span>
+                    <h2>{item.title}</h2>
                     <p>
                       {item.item_type} • ref {item.reference_id}
                     </p>
                   </div>
-                  <div className="result-price">{formatPrice(item.unit_price, item.currency)}</div>
+                  <div className="checkout-price-pill">{formatPrice(item.unit_price, item.currency)}</div>
                 </div>
 
-                <div className="result-detail-grid">
+                <div className="checkout-itinerary-grid">
                   <div>
-                    <span className="field-caption">Adet</span>
+                    <span>Adet</span>
                     <strong>{item.quantity}</strong>
                   </div>
                   <div>
-                    <span className="field-caption">Para birimi</span>
+                    <span>Para birimi</span>
                     <strong>{item.currency}</strong>
                   </div>
                   <div>
-                    <span className="field-caption">Urun tipi</span>
+                    <span>Urun tipi</span>
                     <strong>{item.item_type}</strong>
                   </div>
                   <div>
-                    <span className="field-caption">Kaynak ref</span>
+                    <span>Kaynak ref</span>
                     <strong>{item.reference_id}</strong>
                   </div>
                 </div>
@@ -126,54 +139,11 @@ export function BookingDetailContent({
             ))}
           </section>
 
-          <aside className="selection-card">
-            <span className="eyebrow">Booking Summary</span>
+          <aside className="selection-card checkout-summary-card">
+            <span className="eyebrow">Booking summary</span>
             <h2>Rezervasyon ozeti</h2>
-            {booking.special_requests &&
-            (booking.special_requests.seat_preference ||
-              booking.special_requests.meal_preference ||
-              booking.special_requests.accessibility_note) ? (
-              <div className="selection-grid">
-                <div>
-                  <span>Koltuk tercihi</span>
-                  <strong>{booking.special_requests.seat_preference || "-"}</strong>
-                </div>
-                <div>
-                  <span>Yemek tercihi</span>
-                  <strong>{booking.special_requests.meal_preference || "-"}</strong>
-                </div>
-                <div>
-                  <span>Destek notu</span>
-                  <strong>{booking.special_requests.accessibility_note || "-"}</strong>
-                </div>
-              </div>
-            ) : null}
-            {booking.billing_details ? (
-              <>
-                <div className="selection-grid">
-                  <div>
-                    <span>Fatura tipi</span>
-                    <strong>{booking.billing_details.invoice_type === "company" ? "Sirket" : "Bireysel"}</strong>
-                  </div>
-                  <div>
-                    <span>Fatura unvani</span>
-                    <strong>{booking.billing_details.full_name}</strong>
-                  </div>
-                  <div>
-                    <span>Sehir / Ulke</span>
-                    <strong>
-                      {booking.billing_details.city} / {booking.billing_details.country}
-                    </strong>
-                  </div>
-                  <div>
-                    <span>Vergi</span>
-                    <strong>{booking.billing_details.tax_number || "-"}</strong>
-                  </div>
-                </div>
-                <div className="selection-note">{booking.billing_details.address_line}</div>
-              </>
-            ) : null}
-            <div className="selection-grid">
+
+            <div className="selection-grid compact-grid">
               <div>
                 <span>Durum</span>
                 <strong>{booking.status}</strong>
@@ -191,13 +161,15 @@ export function BookingDetailContent({
                 <strong>{booking.item_count}</strong>
               </div>
             </div>
+
             <div className="selection-note">
               Provider ref: {booking.provider_reference}
               <br />
               Cart id: {booking.cart_id}
             </div>
+
             {booking.contact ? (
-              <div className="selection-grid">
+              <div className="selection-grid compact-grid">
                 <div>
                   <span>Iletisim e-postasi</span>
                   <strong>{booking.contact.email}</strong>
@@ -208,18 +180,78 @@ export function BookingDetailContent({
                 </div>
               </div>
             ) : null}
+
             {booking.travelers.length > 0 ? (
-              <div className="selection-note">
-                {booking.travelers.map((traveler, index) => (
-                  <span key={`${traveler.first_name}-${traveler.last_name}-${index}`}>
-                    Yolcu {index + 1}: {traveler.first_name} {traveler.last_name} • {traveler.traveler_type} •{" "}
-                    {traveler.birth_date}
-                    {index < booking.travelers.length - 1 ? <br /> : null}
-                  </span>
-                ))}
-              </div>
+              <details className="checkout-disclosure">
+                <summary>Yolcu bilgileri</summary>
+                <div className="checkout-disclosure-body">
+                  <div className="selection-note">
+                    {booking.travelers.map((traveler, index) => (
+                      <span key={`${traveler.first_name}-${traveler.last_name}-${index}`}>
+                        Yolcu {index + 1}: {traveler.first_name} {traveler.last_name} • {traveler.traveler_type} • {traveler.birth_date}
+                        {index < booking.travelers.length - 1 ? <br /> : null}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </details>
             ) : null}
-            <div className="selection-grid">
+
+            {booking.special_requests &&
+            (booking.special_requests.seat_preference ||
+              booking.special_requests.meal_preference ||
+              booking.special_requests.accessibility_note) ? (
+              <details className="checkout-disclosure">
+                <summary>Ozel istekler</summary>
+                <div className="checkout-disclosure-body">
+                  <div className="selection-grid compact-grid">
+                    <div>
+                      <span>Koltuk</span>
+                      <strong>{booking.special_requests.seat_preference || "-"}</strong>
+                    </div>
+                    <div>
+                      <span>Yemek</span>
+                      <strong>{booking.special_requests.meal_preference || "-"}</strong>
+                    </div>
+                    <div>
+                      <span>Destek notu</span>
+                      <strong>{booking.special_requests.accessibility_note || "-"}</strong>
+                    </div>
+                  </div>
+                </div>
+              </details>
+            ) : null}
+
+            {booking.billing_details ? (
+              <details className="checkout-disclosure">
+                <summary>Fatura bilgileri</summary>
+                <div className="checkout-disclosure-body">
+                  <div className="selection-grid compact-grid">
+                    <div>
+                      <span>Fatura tipi</span>
+                      <strong>{booking.billing_details.invoice_type === "company" ? "Sirket" : "Bireysel"}</strong>
+                    </div>
+                    <div>
+                      <span>Unvan</span>
+                      <strong>{booking.billing_details.full_name}</strong>
+                    </div>
+                    <div>
+                      <span>Sehir / Ulke</span>
+                      <strong>
+                        {booking.billing_details.city} / {booking.billing_details.country}
+                      </strong>
+                    </div>
+                    <div>
+                      <span>Vergi</span>
+                      <strong>{booking.billing_details.tax_number || "-"}</strong>
+                    </div>
+                  </div>
+                  <div className="selection-note">{booking.billing_details.address_line}</div>
+                </div>
+              </details>
+            ) : null}
+
+            <div className="selection-grid compact-grid">
               <div>
                 <span>Bildirim</span>
                 <strong>{notificationState?.status || "hazir degil"}</strong>
@@ -237,6 +269,7 @@ export function BookingDetailContent({
                 <strong>{notificationState?.template_code || "-"}</strong>
               </div>
             </div>
+
             {notificationState?.content_preview ? (
               <div className="selection-note">{notificationState.content_preview}</div>
             ) : null}
@@ -252,17 +285,25 @@ export function BookingDetailContent({
               </div>
             ) : null}
             {notificationState?.text_body ? (
-              <div className="selection-note" style={{ whiteSpace: "pre-line" }}>
-                {notificationState.text_body}
-              </div>
+              <details className="checkout-disclosure">
+                <summary>Bildirim metni</summary>
+                <div className="checkout-disclosure-body">
+                  <div className="selection-note" style={{ whiteSpace: "pre-line" }}>
+                    {notificationState.text_body}
+                  </div>
+                </div>
+              </details>
             ) : null}
+
             {notificationFeedback ? <div className="form-feedback success">{notificationFeedback}</div> : null}
             {notificationError ? <div className="form-feedback error">{notificationError}</div> : null}
+
             {notificationState && notificationState.status !== "sent" ? (
               <button className="ghost-action selection-action" disabled={isDispatching} onClick={handleMockDispatch} type="button">
                 {isDispatching ? "Bildirim gonderiliyor..." : "Mock email gonder"}
               </button>
             ) : null}
+
             <div className="selection-action-grid">
               <Link className="primary-action selection-action" href="/account">
                 Rezervasyonlarim ekranina git

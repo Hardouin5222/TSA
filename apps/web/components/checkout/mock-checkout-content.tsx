@@ -120,101 +120,109 @@ export function MockCheckoutContent({
       </div>
 
       <section className="results-shell">
-        <div className="results-header-card">
-          <span className="eyebrow">Mock Checkout</span>
-          <h1>Odeme niyeti hazir</h1>
-          <p>
-            Bu ekran iyzico oncesi ilk kontrollu odeme akisini simule eder. Buradan odemeyi tamamlanmis
-            varsayip booking kaydi aciyoruz.
-          </p>
+        <div className="checkout-stepper">
+          <div className="checkout-step is-complete">
+            <span>1</span>
+            <strong>Ucus secimi</strong>
+          </div>
+          <div className="checkout-step is-complete">
+            <span>2</span>
+            <strong>Yolcu bilgileri</strong>
+          </div>
+          <div className="checkout-step is-active">
+            <span>3</span>
+            <strong>Odeme</strong>
+          </div>
         </div>
 
-        <div className="results-layout">
-          <section className="results-list">
-            <article className="result-card active">
-              <div className="result-top-row">
+        <div className="results-header-card compact">
+          <span className="eyebrow">Mock Checkout</span>
+          <h1>Odeme niyeti hazir</h1>
+          <p>Burada iyzico oncesi kontrollu odeme adimini simule ediyor, sonra rezervasyon kaydini olusturuyoruz.</p>
+        </div>
+
+        <div className="results-layout checkout-layout">
+          <section className="results-list checkout-main">
+            <article className="checkout-itinerary-card">
+              <div className="checkout-itinerary-header">
                 <div>
-                  <strong>{confirmedIntent.provider}</strong>
-                  <p>Provider ref • {confirmedIntent.provider_reference}</p>
+                  <span className="eyebrow">Provider bilgisi</span>
+                  <h2>{confirmedIntent.provider}</h2>
+                  <p>Ref: {confirmedIntent.provider_reference}</p>
                 </div>
-                <div className="result-price">{formatPrice(confirmedIntent.amount, confirmedIntent.currency)}</div>
+                <div className="checkout-price-pill">{formatPrice(confirmedIntent.amount, confirmedIntent.currency)}</div>
               </div>
-              <div className="result-detail-grid">
+
+              <div className="checkout-itinerary-grid">
                 <div>
-                  <span className="field-caption">Durum</span>
+                  <span>Durum</span>
                   <strong>{confirmedIntent.status}</strong>
                 </div>
                 <div>
-                  <span className="field-caption">Sepet</span>
+                  <span>Sepet</span>
                   <strong>{confirmedIntent.cart_id}</strong>
                 </div>
                 <div>
-                  <span className="field-caption">Item sayisi</span>
+                  <span>Item sayisi</span>
                   <strong>{confirmedIntent.items.length}</strong>
                 </div>
                 <div>
-                  <span className="field-caption">Checkout yolu</span>
-                  <strong>{confirmedIntent.checkout_url}</strong>
-                </div>
-                <div>
-                  <span className="field-caption">Iletisim</span>
-                  <strong>{confirmedIntent.contact.email}</strong>
-                </div>
-                <div>
-                  <span className="field-caption">Yolcu sayisi</span>
+                  <span>Yolcu sayisi</span>
                   <strong>{confirmedIntent.travelers.length}</strong>
                 </div>
               </div>
+
               <div className="selection-note">
+                Iletisim: {confirmedIntent.contact.email} • {confirmedIntent.contact.phone}
+                <br />
                 Fatura: {confirmedIntent.billing_details.invoice_type === "company" ? "Sirket" : "Bireysel"} •{" "}
                 {confirmedIntent.billing_details.full_name}
-                <br />
-                {confirmedIntent.billing_details.city}, {confirmedIntent.billing_details.country}
               </div>
-              {confirmedIntent.special_requests &&
-              (confirmedIntent.special_requests.seat_preference ||
-                confirmedIntent.special_requests.meal_preference ||
-                confirmedIntent.special_requests.accessibility_note) ? (
-                <div className="selection-note">
-                  Ozel istekler
-                  {confirmedIntent.special_requests.seat_preference ? (
-                    <>
+
+              <details className="checkout-disclosure">
+                <summary>Yolcu ve ek bilgiler</summary>
+                <div className="checkout-disclosure-body">
+                  <div className="selection-note">
+                    {confirmedIntent.travelers.map((traveler, index) => (
+                      <span key={`${traveler.first_name}-${traveler.last_name}-${index}`}>
+                        {index + 1}. {traveler.first_name} {traveler.last_name} • {traveler.traveler_type} • {traveler.birth_date}
+                        {index < confirmedIntent.travelers.length - 1 ? <br /> : null}
+                      </span>
+                    ))}
+                  </div>
+
+                  {confirmedIntent.special_requests &&
+                  (confirmedIntent.special_requests.seat_preference ||
+                    confirmedIntent.special_requests.meal_preference ||
+                    confirmedIntent.special_requests.accessibility_note) ? (
+                    <div className="selection-note">
+                      Koltuk: {confirmedIntent.special_requests.seat_preference || "-"}
                       <br />
-                      Koltuk: {confirmedIntent.special_requests.seat_preference}
-                    </>
-                  ) : null}
-                  {confirmedIntent.special_requests.meal_preference ? (
-                    <>
+                      Yemek: {confirmedIntent.special_requests.meal_preference || "-"}
                       <br />
-                      Yemek: {confirmedIntent.special_requests.meal_preference}
-                    </>
+                      Not: {confirmedIntent.special_requests.accessibility_note || "-"}
+                    </div>
                   ) : null}
-                  {confirmedIntent.special_requests.accessibility_note ? (
-                    <>
-                      <br />
-                      Not: {confirmedIntent.special_requests.accessibility_note}
-                    </>
-                  ) : null}
+
+                  <div className="selection-note">
+                    {confirmedIntent.billing_details.city}, {confirmedIntent.billing_details.country}
+                    <br />
+                    {confirmedIntent.billing_details.address_line}
+                  </div>
                 </div>
-              ) : null}
-              <div className="selection-note">
-                {confirmedIntent.travelers.map((traveler, index) => (
-                  <span key={`${traveler.first_name}-${traveler.last_name}-${index}`}>
-                    {index + 1}. {traveler.first_name} {traveler.last_name} • {traveler.traveler_type}
-                    {index < confirmedIntent.travelers.length - 1 ? <br /> : null}
-                  </span>
-                ))}
-              </div>
+              </details>
             </article>
           </section>
 
-          <aside className="selection-card">
-            <span className="eyebrow">Booking Creation</span>
-            <h2>Odeme sonrasi rezervasyon</h2>
+          <aside className="selection-card checkout-summary-card">
+            <span className="eyebrow">Booking creation</span>
+            <h2>Rezervasyon acilisi</h2>
+
             {feedback ? <div className="form-feedback success">{feedback}</div> : null}
             {error ? <div className="form-feedback error">{error}</div> : null}
+
             {booking ? (
-              <div className="selection-grid">
+              <div className="selection-grid compact-grid">
                 <div>
                   <span>Booking ref</span>
                   <strong>{booking.booking_reference}</strong>
@@ -234,12 +242,14 @@ export function MockCheckoutContent({
               </div>
             ) : (
               <div className="selection-note">
-                Bu adimda payment intent `paid` durumuna gecip booking-service uzerinde rezervasyon acilir.
+                Bu ekranda odeme `paid` durumuna gecirilir ve booking-service tarafinda rezervasyon kaydi acilir.
               </div>
             )}
+
             <button className="primary-action selection-action" disabled={isProcessing} onClick={handleConfirmAndCreateBooking} type="button">
               {isProcessing ? "Isleniyor..." : "Odemeyi tamamlandi varsay"}
             </button>
+
             {booking ? (
               <div className="selection-action-grid">
                 <Link className="ghost-action selection-action" href={`/bookings/${booking.booking_reference}`}>

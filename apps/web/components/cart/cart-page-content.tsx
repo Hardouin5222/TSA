@@ -34,6 +34,12 @@ type BillingForm = {
   tax_number: string;
 };
 
+const travelerTypeLabels: Record<string, string> = {
+  adult: "Yetiskin",
+  child: "Cocuk",
+  infant: "Bebek",
+};
+
 export function CartPageContent() {
   const [cart, setCart] = useState<CartEnvelope["data"] | null>(null);
   const [feedback, setFeedback] = useState<string | null>(null);
@@ -136,6 +142,8 @@ export function CartPageContent() {
     return hasContact && hasTravelers && hasBilling;
   }, [contact, travelers, billingDetails]);
 
+  const primaryItem = cart?.items[0] ?? null;
+
   function updateContactField(name: keyof typeof contact, value: string) {
     setContact((current) => ({ ...current, [name]: value }));
   }
@@ -148,10 +156,7 @@ export function CartPageContent() {
     );
   }
 
-  function updateSpecialRequestField(
-    field: keyof typeof specialRequests,
-    value: string,
-  ) {
+  function updateSpecialRequestField(field: keyof typeof specialRequests, value: string) {
     setSpecialRequests((current) => ({ ...current, [field]: value }));
   }
 
@@ -172,7 +177,9 @@ export function CartPageContent() {
   }
 
   function removeTraveler(index: number) {
-    setTravelers((current) => (current.length === 1 ? current : current.filter((_, travelerIndex) => travelerIndex !== index)));
+    setTravelers((current) =>
+      current.length === 1 ? current : current.filter((_, travelerIndex) => travelerIndex !== index),
+    );
   }
 
   async function handleCreatePaymentIntent() {
@@ -249,12 +256,27 @@ export function CartPageContent() {
       </div>
 
       <section className="results-shell">
-        <div className="results-header-card">
+        <div className="checkout-stepper">
+          <div className="checkout-step is-complete">
+            <span>1</span>
+            <strong>Ucus secimi</strong>
+          </div>
+          <div className="checkout-step is-active">
+            <span>2</span>
+            <strong>Yolcu bilgileri</strong>
+          </div>
+          <div className={`checkout-step${paymentIntent ? " is-active" : ""}`}>
+            <span>3</span>
+            <strong>Odeme</strong>
+          </div>
+        </div>
+
+        <div className="results-header-card compact">
           <span className="eyebrow">Checkout Foundation</span>
-          <h1>Sepet ve odeme niyeti ozeti</h1>
+          <h1>Yolcu bilgileri ve odeme hazirligi</h1>
           <p>
-            Bu ekran secilen ucus tekliflerini kalici cart verisiyle gostermeye ve iyzico oncesi payment
-            intent temelini kurmaya yarar.
+            Bu adimda sadece gerekli bilgileri topluyoruz. Opsiyonel tercihleri asagiya saklayip satin alma
+            akisindaki gorsel yogunlugu dusuruyoruz.
           </p>
         </div>
 
@@ -265,314 +287,353 @@ export function CartPageContent() {
         ) : null}
 
         {!isLoading && cart && cart.items.length > 0 ? (
-          <div className="results-layout">
-            <div className="results-list">
-              <article className="result-card active">
-                <div className="result-top-row">
-                  <div>
-                    <strong>Yolcu ve iletisim bilgileri</strong>
-                    <p>3 tik kuralina uygun checkout icin once iletisim ve ilk yolcu setini topluyoruz.</p>
-                  </div>
-                </div>
-
-                <form className="auth-form" onSubmit={handleTravelerSubmit}>
-                  <div className="auth-split-grid">
-                    <label className="auth-field">
-                      <span>E-posta</span>
-                      <input
-                        autoComplete="email"
-                        onChange={(event) => updateContactField("email", event.target.value)}
-                        placeholder="ornek@email.com"
-                        required
-                        type="email"
-                        value={contact.email}
-                      />
-                    </label>
-                    <label className="auth-field">
-                      <span>Telefon</span>
-                      <input
-                        autoComplete="tel"
-                        onChange={(event) => updateContactField("phone", event.target.value)}
-                        placeholder="+90 5xx xxx xx xx"
-                        required
-                        value={contact.phone}
-                      />
-                    </label>
-                  </div>
-
-                  <div className="selection-note">
-                    Bu bilgiler rezervasyon teyidi, bildirim ve ileride yolcu paneline tasinacak checkout omurgasidir.
-                  </div>
-
-                  <div className="results-list">
-                    {travelers.map((traveler, index) => (
-                      <article className="account-stat" key={`traveler-${index}`}>
-                        <div className="result-top-row">
-                          <strong>Yolcu {index + 1}</strong>
-                          {travelers.length > 1 ? (
-                            <button className="ghost-action" onClick={() => removeTraveler(index)} type="button">
-                              Kaldir
-                            </button>
-                          ) : null}
-                        </div>
-                        <div className="auth-split-grid">
-                          <label className="auth-field">
-                            <span>Ad</span>
-                            <input
-                              onChange={(event) => updateTraveler(index, "first_name", event.target.value)}
-                              placeholder="Ad"
-                              required
-                              value={traveler.first_name}
-                            />
-                          </label>
-                          <label className="auth-field">
-                            <span>Soyad</span>
-                            <input
-                              onChange={(event) => updateTraveler(index, "last_name", event.target.value)}
-                              placeholder="Soyad"
-                              required
-                              value={traveler.last_name}
-                            />
-                          </label>
-                        </div>
-                        <div className="auth-split-grid">
-                          <label className="auth-field">
-                            <span>Dogum tarihi</span>
-                            <input
-                              onChange={(event) => updateTraveler(index, "birth_date", event.target.value)}
-                              required
-                              type="date"
-                              value={traveler.birth_date}
-                            />
-                          </label>
-                          <label className="auth-field">
-                            <span>Yolcu tipi</span>
-                            <select
-                              onChange={(event) => updateTraveler(index, "traveler_type", event.target.value)}
-                              value={traveler.traveler_type}
-                            >
-                              <option value="adult">Yetiskin</option>
-                              <option value="child">Cocuk</option>
-                              <option value="infant">Bebek</option>
-                            </select>
-                          </label>
-                        </div>
-                      </article>
-                    ))}
-                  </div>
-
-                  <div className="auth-cta-row">
-                    <button className="ghost-action" onClick={addTraveler} type="button">
-                      Yolcu ekle
-                    </button>
-                  </div>
-
-                  <article className="account-stat">
-                    <div className="result-top-row">
-                      <strong>Ozel istekler</strong>
-                      <span className="field-caption">Opsiyonel ama donusum icin faydali</span>
-                    </div>
-                    <div className="auth-split-grid">
-                      <label className="auth-field">
-                        <span>Koltuk tercihi</span>
-                        <select
-                          onChange={(event) => updateSpecialRequestField("seat_preference", event.target.value)}
-                          value={specialRequests.seat_preference}
-                        >
-                          <option value="">Secilmedi</option>
-                          <option value="window">Cam kenari</option>
-                          <option value="aisle">Koridor</option>
-                          <option value="front">On siralar</option>
-                        </select>
-                      </label>
-                      <label className="auth-field">
-                        <span>Yemek tercihi</span>
-                        <select
-                          onChange={(event) => updateSpecialRequestField("meal_preference", event.target.value)}
-                          value={specialRequests.meal_preference}
-                        >
-                          <option value="">Secilmedi</option>
-                          <option value="standard">Standart</option>
-                          <option value="vegetarian">Vejetaryen</option>
-                          <option value="child">Cocuk menusu</option>
-                        </select>
-                      </label>
-                    </div>
-                    <label className="auth-field">
-                      <span>Erisilebilirlik veya destek notu</span>
-                      <textarea
-                        onChange={(event) => updateSpecialRequestField("accessibility_note", event.target.value)}
-                        placeholder="Tekerlekli sandalye, yardim ihtiyaci, oncelikli destek..."
-                        rows={3}
-                        value={specialRequests.accessibility_note}
-                      />
-                    </label>
-                  </article>
-
-                  <article className="account-stat">
-                    <div className="result-top-row">
-                      <strong>Fatura bilgileri</strong>
-                      <span className="field-caption">Odeme sonrasi belge akisi icin hazirlik</span>
-                    </div>
-                    <div className="auth-split-grid">
-                      <label className="auth-field">
-                        <span>Fatura tipi</span>
-                        <select
-                          onChange={(event) => updateBillingField("invoice_type", event.target.value)}
-                          value={billingDetails.invoice_type}
-                        >
-                          <option value="individual">Bireysel</option>
-                          <option value="company">Sirket</option>
-                        </select>
-                      </label>
-                      <label className="auth-field">
-                        <span>Fatura unvani</span>
-                        <input
-                          onChange={(event) => updateBillingField("full_name", event.target.value)}
-                          placeholder="Ad Soyad veya sirket yetkilisi"
-                          required
-                          value={billingDetails.full_name}
-                        />
-                      </label>
-                    </div>
-                    <div className="auth-split-grid">
-                      <label className="auth-field">
-                        <span>Ulke</span>
-                        <input
-                          onChange={(event) => updateBillingField("country", event.target.value)}
-                          required
-                          value={billingDetails.country}
-                        />
-                      </label>
-                      <label className="auth-field">
-                        <span>Sehir</span>
-                        <input
-                          onChange={(event) => updateBillingField("city", event.target.value)}
-                          placeholder="Istanbul"
-                          required
-                          value={billingDetails.city}
-                        />
-                      </label>
-                    </div>
-                    <label className="auth-field">
-                      <span>Adres</span>
-                      <textarea
-                        onChange={(event) => updateBillingField("address_line", event.target.value)}
-                        placeholder="Mahalle, sokak, bina, ilce"
-                        required
-                        rows={3}
-                        value={billingDetails.address_line}
-                      />
-                    </label>
-                    {billingDetails.invoice_type === "company" ? (
-                      <div className="auth-split-grid">
-                        <label className="auth-field">
-                          <span>Sirket unvani</span>
-                          <input
-                            onChange={(event) => updateBillingField("company_name", event.target.value)}
-                            placeholder="ABC Turizm A.S."
-                            required
-                            value={billingDetails.company_name}
-                          />
-                        </label>
-                        <label className="auth-field">
-                          <span>Vergi no</span>
-                          <input
-                            onChange={(event) => updateBillingField("tax_number", event.target.value)}
-                            placeholder="1234567890"
-                            required
-                            value={billingDetails.tax_number}
-                          />
-                        </label>
-                      </div>
-                    ) : null}
-                  </article>
-                </form>
-              </article>
-
-              {cart.items.map((item) => (
-                <article className="result-card active" key={item.id}>
-                  <div className="result-top-row">
+          <div className="results-layout checkout-layout">
+            <div className="results-list checkout-main">
+              {primaryItem ? (
+                <article className="checkout-itinerary-card">
+                  <div className="checkout-itinerary-header">
                     <div>
-                      <strong>{item.title}</strong>
-                      <p>{item.item_type} • ref {item.reference_id}</p>
+                      <span className="eyebrow">Secili teklif</span>
+                      <h2>{primaryItem.title}</h2>
+                      <p>
+                        {primaryItem.item_type} • ref {primaryItem.reference_id}
+                      </p>
                     </div>
-                    <div className="result-price">{formatPrice(item.unit_price, item.currency)}</div>
+                    <div className="checkout-price-pill">{formatPrice(primaryItem.unit_price, primaryItem.currency)}</div>
                   </div>
-
-                  <div className="result-detail-grid">
+                  <div className="checkout-itinerary-grid">
                     <div>
-                      <span className="field-caption">Adet</span>
-                      <strong>{item.quantity}</strong>
+                      <span>Urun adedi</span>
+                      <strong>{primaryItem.quantity}</strong>
                     </div>
                     <div>
-                      <span className="field-caption">Para birimi</span>
-                      <strong>{item.currency}</strong>
+                      <span>Para birimi</span>
+                      <strong>{primaryItem.currency}</strong>
+                    </div>
+                    <div>
+                      <span>Toplam sepet</span>
+                      <strong>{formatPrice(cart.total_amount, cart.currency)}</strong>
+                    </div>
+                    <div>
+                      <span>Yolcu sayisi</span>
+                      <strong>{travelers.length}</strong>
                     </div>
                   </div>
                 </article>
-              ))}
+              ) : null}
+
+              <article className="auth-form-card checkout-form-card">
+                <div className="checkout-section-head">
+                  <div>
+                    <span className="eyebrow">Zorunlu alanlar</span>
+                    <h2>Yolcu ve iletisim bilgileri</h2>
+                  </div>
+                  <p>Rezervasyonu tamamlamak icin gerekli bilgileri burada topluyoruz.</p>
+                </div>
+
+                <form className="auth-form" onSubmit={handleTravelerSubmit}>
+                  <section className="checkout-section-card">
+                    <div className="checkout-block-title">
+                      <strong>Iletisim</strong>
+                      <span>Bilet ve rezervasyon bildirimi bu kanaldan gider.</span>
+                    </div>
+                    <div className="auth-split-grid">
+                      <label className="auth-field">
+                        <span>E-posta</span>
+                        <input
+                          autoComplete="email"
+                          onChange={(event) => updateContactField("email", event.target.value)}
+                          placeholder="ornek@email.com"
+                          required
+                          type="email"
+                          value={contact.email}
+                        />
+                      </label>
+                      <label className="auth-field">
+                        <span>Telefon</span>
+                        <input
+                          autoComplete="tel"
+                          onChange={(event) => updateContactField("phone", event.target.value)}
+                          placeholder="+90 5xx xxx xx xx"
+                          required
+                          value={contact.phone}
+                        />
+                      </label>
+                    </div>
+                  </section>
+
+                  <section className="checkout-section-card">
+                    <div className="checkout-block-title">
+                      <strong>Yolcular</strong>
+                      <span>Ilk satin alma akisini 3 tik mantiginda korumak icin sade tutulur.</span>
+                    </div>
+
+                    <div className="checkout-travelers">
+                      {travelers.map((traveler, index) => (
+                        <article className="traveler-card" key={`traveler-${index}`}>
+                          <div className="traveler-card-head">
+                            <strong>Yolcu {index + 1}</strong>
+                            <div className="traveler-card-actions">
+                              <span>{travelerTypeLabels[traveler.traveler_type]}</span>
+                              {travelers.length > 1 ? (
+                                <button className="ghost-action compact" onClick={() => removeTraveler(index)} type="button">
+                                  Kaldir
+                                </button>
+                              ) : null}
+                            </div>
+                          </div>
+
+                          <div className="auth-split-grid">
+                            <label className="auth-field">
+                              <span>Ad</span>
+                              <input
+                                onChange={(event) => updateTraveler(index, "first_name", event.target.value)}
+                                placeholder="Ad"
+                                required
+                                value={traveler.first_name}
+                              />
+                            </label>
+                            <label className="auth-field">
+                              <span>Soyad</span>
+                              <input
+                                onChange={(event) => updateTraveler(index, "last_name", event.target.value)}
+                                placeholder="Soyad"
+                                required
+                                value={traveler.last_name}
+                              />
+                            </label>
+                          </div>
+
+                          <div className="auth-split-grid">
+                            <label className="auth-field">
+                              <span>Dogum tarihi</span>
+                              <input
+                                onChange={(event) => updateTraveler(index, "birth_date", event.target.value)}
+                                required
+                                type="date"
+                                value={traveler.birth_date}
+                              />
+                            </label>
+                            <label className="auth-field">
+                              <span>Yolcu tipi</span>
+                              <select
+                                onChange={(event) => updateTraveler(index, "traveler_type", event.target.value)}
+                                value={traveler.traveler_type}
+                              >
+                                <option value="adult">Yetiskin</option>
+                                <option value="child">Cocuk</option>
+                                <option value="infant">Bebek</option>
+                              </select>
+                            </label>
+                          </div>
+                        </article>
+                      ))}
+                    </div>
+
+                    <div className="auth-cta-row">
+                      <button className="ghost-action" onClick={addTraveler} type="button">
+                        Yolcu ekle
+                      </button>
+                    </div>
+                  </section>
+
+                  <details className="checkout-disclosure">
+                    <summary>Ozel istekler</summary>
+                    <div className="checkout-disclosure-body">
+                      <div className="auth-split-grid">
+                        <label className="auth-field">
+                          <span>Koltuk tercihi</span>
+                          <select
+                            onChange={(event) => updateSpecialRequestField("seat_preference", event.target.value)}
+                            value={specialRequests.seat_preference}
+                          >
+                            <option value="">Secilmedi</option>
+                            <option value="window">Cam kenari</option>
+                            <option value="aisle">Koridor</option>
+                            <option value="front">On siralar</option>
+                          </select>
+                        </label>
+                        <label className="auth-field">
+                          <span>Yemek tercihi</span>
+                          <select
+                            onChange={(event) => updateSpecialRequestField("meal_preference", event.target.value)}
+                            value={specialRequests.meal_preference}
+                          >
+                            <option value="">Secilmedi</option>
+                            <option value="standard">Standart</option>
+                            <option value="vegetarian">Vejetaryen</option>
+                            <option value="child">Cocuk menusu</option>
+                          </select>
+                        </label>
+                      </div>
+                      <label className="auth-field">
+                        <span>Erisilebilirlik veya destek notu</span>
+                        <textarea
+                          onChange={(event) => updateSpecialRequestField("accessibility_note", event.target.value)}
+                          placeholder="Tekerlekli sandalye, yardim ihtiyaci, oncelikli destek..."
+                          rows={3}
+                          value={specialRequests.accessibility_note}
+                        />
+                      </label>
+                    </div>
+                  </details>
+
+                  <details className="checkout-disclosure">
+                    <summary>Fatura bilgileri</summary>
+                    <div className="checkout-disclosure-body">
+                      <div className="auth-split-grid">
+                        <label className="auth-field">
+                          <span>Fatura tipi</span>
+                          <select
+                            onChange={(event) => updateBillingField("invoice_type", event.target.value)}
+                            value={billingDetails.invoice_type}
+                          >
+                            <option value="individual">Bireysel</option>
+                            <option value="company">Sirket</option>
+                          </select>
+                        </label>
+                        <label className="auth-field">
+                          <span>Fatura unvani</span>
+                          <input
+                            onChange={(event) => updateBillingField("full_name", event.target.value)}
+                            placeholder="Ad Soyad veya sirket yetkilisi"
+                            required
+                            value={billingDetails.full_name}
+                          />
+                        </label>
+                      </div>
+                      <div className="auth-split-grid">
+                        <label className="auth-field">
+                          <span>Ulke</span>
+                          <input
+                            onChange={(event) => updateBillingField("country", event.target.value)}
+                            required
+                            value={billingDetails.country}
+                          />
+                        </label>
+                        <label className="auth-field">
+                          <span>Sehir</span>
+                          <input
+                            onChange={(event) => updateBillingField("city", event.target.value)}
+                            placeholder="Istanbul"
+                            required
+                            value={billingDetails.city}
+                          />
+                        </label>
+                      </div>
+                      <label className="auth-field">
+                        <span>Adres</span>
+                        <textarea
+                          onChange={(event) => updateBillingField("address_line", event.target.value)}
+                          placeholder="Mahalle, sokak, bina, ilce"
+                          required
+                          rows={3}
+                          value={billingDetails.address_line}
+                        />
+                      </label>
+                      {billingDetails.invoice_type === "company" ? (
+                        <div className="auth-split-grid">
+                          <label className="auth-field">
+                            <span>Sirket unvani</span>
+                            <input
+                              onChange={(event) => updateBillingField("company_name", event.target.value)}
+                              placeholder="ABC Turizm A.S."
+                              required
+                              value={billingDetails.company_name}
+                            />
+                          </label>
+                          <label className="auth-field">
+                            <span>Vergi no</span>
+                            <input
+                              onChange={(event) => updateBillingField("tax_number", event.target.value)}
+                              placeholder="1234567890"
+                              required
+                              value={billingDetails.tax_number}
+                            />
+                          </label>
+                        </div>
+                      ) : null}
+                    </div>
+                  </details>
+                </form>
+              </article>
             </div>
 
-            <aside className="selection-card">
-              <span className="eyebrow">Payment Intent</span>
-              <h2>Checkout hazirligi</h2>
-              <div className="selection-grid">
-                <div>
-                  <span>Toplam</span>
-                  <strong>{formatPrice(cart.total_amount, cart.currency)}</strong>
-                </div>
-                <div>
-                  <span>Sepet urunu</span>
-                  <strong>{cart.items.length}</strong>
-                </div>
-                <div>
-                  <span>Yolcu</span>
-                  <strong>{travelers.length}</strong>
-                </div>
-                <div>
-                  <span>Iletisim</span>
-                  <strong>{contact.email ? "hazir" : "eksik"}</strong>
-                </div>
+            <aside className="selection-card checkout-summary-card">
+              <span className="eyebrow">Odeme hazirligi</span>
+              <h2>Checkout ozeti</h2>
+
+              <div className="checkout-summary-line">
+                <span>Toplam</span>
+                <strong>{formatPrice(cart.total_amount, cart.currency)}</strong>
+              </div>
+              <div className="checkout-summary-line">
+                <span>Sepet urunu</span>
+                <strong>{cart.items.length}</strong>
+              </div>
+              <div className="checkout-summary-line">
+                <span>Yolcu</span>
+                <strong>{travelers.length}</strong>
+              </div>
+              <div className="checkout-summary-line">
+                <span>Iletisim</span>
+                <strong>{contact.email && contact.phone ? "hazir" : "eksik"}</strong>
+              </div>
+
+              <div className="selection-grid compact-grid">
                 <div>
                   <span>Fatura</span>
-                  <strong>{billingDetails.invoice_type === "company" ? "sirket" : "bireysel"}</strong>
+                  <strong>{billingDetails.invoice_type === "company" ? "Sirket" : "Bireysel"}</strong>
                 </div>
                 <div>
                   <span>Ozel istek</span>
                   <strong>
                     {specialRequests.seat_preference || specialRequests.meal_preference || specialRequests.accessibility_note
-                      ? "var"
-                      : "yok"}
+                      ? "Var"
+                      : "Yok"}
                   </strong>
                 </div>
               </div>
+
               {feedback ? <div className="form-feedback success">{feedback}</div> : null}
               {error ? <div className="form-feedback error">{error}</div> : null}
+
               {paymentIntent ? (
                 <div className="selection-note">
-                  Intent olustu: {paymentIntent.provider} • {paymentIntent.status} • ref{" "}
-                  {paymentIntent.provider_reference}
+                  Intent olustu: {paymentIntent.provider} • {paymentIntent.status}
+                  <br />
+                  Ref: {paymentIntent.provider_reference}
                 </div>
               ) : (
                 <div className="selection-note">
-                  Iletisim ve yolcu bilgileri payment intent icine kaydedilir. Sonraki adimda bu intent gercek
-                  iyzico checkout linkine ve odeme callback akisina baglanacak.
+                  Once bu adimi tamamlayip payment intent olusturuyoruz. Gercek iyzico baglantisinda sonraki
+                  ekranda kart ve callback akisina gecilecek.
                 </div>
               )}
+
               <button
                 className="primary-action selection-action"
                 disabled={isCreatingIntent || !isCheckoutReady}
                 onClick={handleCreatePaymentIntent}
                 type="button"
               >
-                {isCreatingIntent ? "Odeme intent'i olusturuluyor..." : "Odeme adimina gec"}
+                {isCreatingIntent ? "Intent olusturuluyor..." : "Odeme adimina gec"}
               </button>
+
               {paymentIntent ? (
                 <Link className="ghost-action selection-action" href={paymentIntent.checkout_url}>
                   Mock checkout ekranina git
                 </Link>
               ) : null}
+
+              <div className="checkout-help-card">
+                <strong>Bu ekranda neyi sadeleştirdik?</strong>
+                <ul className="checkout-help-list">
+                  <li>Zorunlu alanlar en uste alindi.</li>
+                  <li>Opsiyonel bolumler gizli sekmeye tasindi.</li>
+                  <li>Sag panel sadece karar vermek icin gereken bilgileri tutuyor.</li>
+                </ul>
+              </div>
             </aside>
           </div>
         ) : null}

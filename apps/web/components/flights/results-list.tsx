@@ -95,121 +95,127 @@ export function ResultsList({ data }: { data: FlightSearchEnvelope["data"] }) {
 
   return (
     <section className="results-shell">
-      <div className="results-header-card">
-        <span className="eyebrow">Flight Search Foundation</span>
-        <h1>{data.route_label}</h1>
-        <p>
-          Bu ekran bugunden normalize flight offers gosterecek sekilde hazir. Yarin ayni kontrata Duffel,
-          Travelfusion ve Mystifly adapterleri baglanabilecek.
-        </p>
+      <div className="results-route-bar">
+        <div className="results-route-main">
+          <strong>{data.route_label}</strong>
+          <span>{visibleOffers.length} teklif</span>
+        </div>
+        <div className="results-route-meta">
+          <span>{directOnly ? "Direkt filtre acik" : "Tum ucuslar"}</span>
+          <span>
+            {sortMode === "recommended"
+              ? "Onerilen"
+              : sortMode === "price"
+                ? "En dusuk fiyat"
+                : sortMode === "duration"
+                  ? "En kisa sure"
+                  : "En erken kalkis"}
+          </span>
+        </div>
       </div>
 
-      <div className="results-controls-card">
-        <div className="results-control-group">
-          <label className="filter-toggle">
-            <input checked={directOnly} onChange={() => setDirectOnly((value) => !value)} type="checkbox" />
-            <span>Sadece direkt ucuslar</span>
-          </label>
-        </div>
+      <div className="results-layout flight-results-grid">
+        <aside className="results-filter-panel">
+          <div className="results-filter-card">
+            <span className="eyebrow">Filtreler</span>
+            <h2>Hizli secim</h2>
 
-        <div className="results-control-group">
-          <span className="field-caption">Siralama</span>
-          <div className="sort-pill-row">
-            <button className={sortMode === "recommended" ? "is-selected" : ""} onClick={() => setSortMode("recommended")} type="button">
-              Onerilen
-            </button>
-            <button className={sortMode === "price" ? "is-selected" : ""} onClick={() => setSortMode("price")} type="button">
-              Fiyat
-            </button>
-            <button className={sortMode === "duration" ? "is-selected" : ""} onClick={() => setSortMode("duration")} type="button">
-              Sure
-            </button>
-            <button className={sortMode === "departure" ? "is-selected" : ""} onClick={() => setSortMode("departure")} type="button">
-              Kalkis
-            </button>
+            <label className="filter-toggle">
+              <input checked={directOnly} onChange={() => setDirectOnly((value) => !value)} type="checkbox" />
+              <span>Sadece direkt ucuslar</span>
+            </label>
+
+            <div className="results-filter-stack">
+              <strong>Siralama</strong>
+              <div className="sort-pill-row">
+                <button className={sortMode === "recommended" ? "is-selected" : ""} onClick={() => setSortMode("recommended")} type="button">
+                  Onerilen
+                </button>
+                <button className={sortMode === "price" ? "is-selected" : ""} onClick={() => setSortMode("price")} type="button">
+                  Fiyat
+                </button>
+                <button className={sortMode === "duration" ? "is-selected" : ""} onClick={() => setSortMode("duration")} type="button">
+                  Sure
+                </button>
+                <button className={sortMode === "departure" ? "is-selected" : ""} onClick={() => setSortMode("departure")} type="button">
+                  Kalkis
+                </button>
+              </div>
+            </div>
+
+            <div className="results-filter-note">
+              Turna benzeri sade akista filtreleri solda topluyoruz; karar alanini ise teklif kartlarina birakiyoruz.
+            </div>
           </div>
-        </div>
-      </div>
+        </aside>
 
-      <div className="results-layout">
-        <div className="results-list">
-          {visibleOffers.map((offer) => {
-            const isActive = offer.id === selectedOffer?.id;
+        <div className="results-main-column">
+          <div className="results-header-card compact">
+            <span className="eyebrow">Flight Search</span>
+            <h1>Sec ve devam et</h1>
+            <p>Fiyat, sure ve paket netligi bir arada. Gorsel gurultuyu azaltip satin alma kararini hizlandiriyoruz.</p>
+          </div>
 
-            return (
-              <article className={`result-card${isActive ? " active" : ""}`} key={offer.id}>
-                <div className="result-top-row">
-                  <div>
-                    <strong>
-                      {offer.airline_name} <span>{offer.airline_code}</span>
-                    </strong>
-                    <p>
-                      {offer.provider} uzerinden sunuluyor • {offer.cabin_class} • {offer.fare_family}
-                    </p>
-                  </div>
-                  <div className="result-price">{formatPrice(offer.price_amount, offer.price_currency)}</div>
-                </div>
+          <div className="results-list compact-results">
+            {visibleOffers.map((offer) => {
+              const isActive = offer.id === selectedOffer?.id;
 
-                <div className="result-timeline">
-                  <div>
-                    <span>Kalkis</span>
-                    <strong>{formatTime(offer.departure_at)}</strong>
-                    <p>{offer.origin}</p>
-                  </div>
-                  <div className="timeline-center">
-                    <span>{offer.duration_minutes} dk</span>
-                    <div className="timeline-line" />
-                    <p>{offer.stop_count === 0 ? "Direkt" : `${offer.stop_count} aktarma`}</p>
-                  </div>
-                  <div>
-                    <span>Varis</span>
-                    <strong>{formatTime(offer.arrival_at)}</strong>
-                    <p>{offer.destination}</p>
-                  </div>
-                </div>
+              return (
+                <article className={`result-card offer-card${isActive ? " active" : ""}`} key={offer.id}>
+                  <div className="offer-card-main">
+                    <div className="offer-card-airline">
+                      <strong>
+                        {offer.airline_name} <span>{offer.airline_code}</span>
+                      </strong>
+                      <p>
+                        {offer.provider} • {offer.cabin_class} • {offer.fare_family}
+                      </p>
+                    </div>
 
-                <div className="result-detail-grid">
-                  <div>
-                    <span className="field-caption">Bagaj</span>
-                    <strong>{offer.baggage_summary}</strong>
-                  </div>
-                  <div>
-                    <span className="field-caption">Iptal politikasi</span>
-                    <strong>{offer.cancellation_policy}</strong>
-                  </div>
-                  <div>
-                    <span className="field-caption">Koltuk araligi</span>
-                    <strong>{offer.seat_pitch}</strong>
-                  </div>
-                  <div>
-                    <span className="field-caption">Paket skoru</span>
-                    <strong>{offer.package_score}/100</strong>
-                  </div>
-                </div>
+                    <div className="offer-card-timeline">
+                      <div>
+                        <span>Kalkis</span>
+                        <strong>{formatTime(offer.departure_at)}</strong>
+                        <p>{offer.origin}</p>
+                      </div>
+                      <div className="offer-card-center">
+                        <span>{offer.duration_minutes} dk</span>
+                        <div className="timeline-line" />
+                        <p>{offer.stop_count === 0 ? "Direkt ucus" : `${offer.stop_count} aktarma`}</p>
+                      </div>
+                      <div>
+                        <span>Varis</span>
+                        <strong>{formatTime(offer.arrival_at)}</strong>
+                        <p>{offer.destination}</p>
+                      </div>
+                    </div>
 
-                <div className="result-bottom-row">
-                  <div className="result-tags">
-                    {offer.tags.map((tag) => (
-                      <span key={tag}>{tag}</span>
-                    ))}
+                    <div className="offer-chip-row">
+                      <span>{offer.baggage_summary}</span>
+                      <span>{offer.cancellation_policy}</span>
+                      <span>{offer.package_score}/100 paket skoru</span>
+                    </div>
                   </div>
-                  <div className="result-actions">
-                    <button className="ghost-action compact" onClick={() => setSelectedOfferId(offer.id)} type="button">
-                      {isActive ? "Secili" : "Incele"}
-                    </button>
+
+                  <div className="offer-card-side">
+                    <div className="result-price">{formatPrice(offer.price_amount, offer.price_currency)}</div>
+                    <div className="offer-side-note">{offer.stop_count === 0 ? "En kolay secenek" : "Alternatif rota"}</div>
                     <button className="primary-action compact" onClick={() => handleAddToCart(offer)} type="button">
                       {isAddingToCart && isActive ? "Ekleniyor..." : "Sepete ekle"}
                     </button>
+                    <button className="ghost-action compact" onClick={() => setSelectedOfferId(offer.id)} type="button">
+                      {isActive ? "Secili" : "Detayi ac"}
+                    </button>
                   </div>
-                </div>
-              </article>
-            );
-          })}
+                </article>
+              );
+            })}
+          </div>
         </div>
 
-        <aside className="selection-card">
-          <span className="eyebrow">Cart Foundation</span>
-          <h2>Secili teklif ozeti</h2>
+        <aside className="selection-card results-selection-card">
+          <span className="eyebrow">Secili teklif</span>
+          <h2>Karar ozeti</h2>
           {selectedOffer ? (
             <>
               <div className="selection-summary">
@@ -218,7 +224,8 @@ export function ResultsList({ data }: { data: FlightSearchEnvelope["data"] }) {
                   {selectedOffer.origin} → {selectedOffer.destination}
                 </span>
               </div>
-              <div className="selection-grid">
+
+              <div className="selection-grid compact-grid">
                 <div>
                   <span>Fiyat</span>
                   <strong>{formatPrice(selectedOffer.price_amount, selectedOffer.price_currency)}</strong>
@@ -232,22 +239,24 @@ export function ResultsList({ data }: { data: FlightSearchEnvelope["data"] }) {
                   <strong>{selectedOffer.fare_family}</strong>
                 </div>
                 <div>
-                  <span>Paket uyumu</span>
-                  <strong>{selectedOffer.package_score}/100</strong>
+                  <span>Bagaj</span>
+                  <strong>{selectedOffer.baggage_summary}</strong>
                 </div>
               </div>
+
               {cartFeedback ? <div className="form-feedback success">{cartFeedback}</div> : null}
               {cartError ? <div className="form-feedback error">{cartError}</div> : null}
+
               {cartState ? (
                 <div className="selection-note">
-                  Aktif sepet: {cartState.items.length} urun • toplam{" "}
-                  {formatPrice(cartState.total_amount, cartState.currency)}
+                  Aktif sepet: {cartState.items.length} urun • toplam {formatPrice(cartState.total_amount, cartState.currency)}
                 </div>
               ) : (
                 <div className="selection-note">
-                  Bu kart bir sonraki sprintte gercek checkout akisi ve fiyat dogrulama ile genisleyecek.
+                  Bu panel sadece satin alma kararini destekler. Sonraki adimda yolcu ve odeme bilgilerine gecilir.
                 </div>
               )}
+
               <div className="selection-action-grid">
                 <button className="primary-action selection-action" onClick={() => handleAddToCart(selectedOffer)} type="button">
                   {isAddingToCart ? "Sepete ekleniyor..." : "Secili teklifi sepete ekle"}
