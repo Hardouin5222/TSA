@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 import { apiRequest } from "@/lib/api";
 import { getSession } from "@/lib/auth";
@@ -56,6 +56,27 @@ function formatPrice(value: number, currency: string) {
   }).format(value);
 }
 
+function readString(payload: Record<string, unknown>, key: string, fallback = "") {
+  const value = payload[key];
+  return typeof value === "string" ? value : fallback;
+}
+
+function readNumber(payload: Record<string, unknown>, key: string, fallback = 0) {
+  const value = payload[key];
+  return typeof value === "number" ? value : fallback;
+}
+
+function formatTime(value: string | undefined) {
+  if (!value) {
+    return "--:--";
+  }
+
+  return new Intl.DateTimeFormat("tr-TR", {
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(new Date(value));
+}
+
 export function MockCheckoutContent({
   providerReference,
   intent,
@@ -68,6 +89,13 @@ export function MockCheckoutContent({
   const [feedback, setFeedback] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+
+  const primaryItem = confirmedIntent.items[0];
+  const payload = primaryItem?.item_payload ?? {};
+  const totalPrice = useMemo(
+    () => confirmedIntent.items.reduce((sum, item) => sum + item.unit_price * item.quantity, 0),
+    [confirmedIntent.items],
+  );
 
   async function handleConfirmAndCreateBooking() {
     setIsProcessing(true);
@@ -119,147 +147,198 @@ export function MockCheckoutContent({
         <span>Mock checkout</span>
       </div>
 
-      <section className="results-shell">
-        <div className="checkout-stepper">
-          <div className="checkout-step is-complete">
-            <span>1</span>
-            <strong>Ucus secimi</strong>
+      <section className="turna-process-shell">
+        <div className="turna-process-bar">
+          <div className="turna-process-brand">
+            <strong>Travel Super App</strong>
+            <span>Payment step</span>
           </div>
-          <div className="checkout-step is-complete">
-            <span>2</span>
-            <strong>Yolcu bilgileri</strong>
-          </div>
-          <div className="checkout-step is-active">
-            <span>3</span>
-            <strong>Odeme</strong>
+
+          <div className="turna-process-steps" aria-label="Odeme adimlari">
+            <div className="turna-process-step is-complete">
+              <span>1</span>
+              <strong>Ucus secimi</strong>
+            </div>
+            <div className="turna-process-step is-complete">
+              <span>2</span>
+              <strong>Yolcu bilgileri</strong>
+            </div>
+            <div className="turna-process-step is-active">
+              <span>3</span>
+              <strong>Odeme</strong>
+            </div>
           </div>
         </div>
 
-        <div className="results-header-card compact">
-          <span className="eyebrow">Mock Checkout</span>
-          <h1>Odeme niyeti hazir</h1>
-          <p>Burada iyzico oncesi kontrollu odeme adimini simule ediyor, sonra rezervasyon kaydini olusturuyoruz.</p>
-        </div>
-
-        <div className="results-layout checkout-layout">
-          <section className="results-list checkout-main">
-            <article className="checkout-itinerary-card">
-              <div className="checkout-itinerary-header">
+        <div className="turna-checkout-grid">
+          <div className="turna-checkout-main">
+            <section className="turna-process-card turna-payment-card">
+              <div className="turna-card-head">
                 <div>
-                  <span className="eyebrow">Provider bilgisi</span>
-                  <h2>{confirmedIntent.provider}</h2>
-                  <p>Ref: {confirmedIntent.provider_reference}</p>
+                  <span className="turna-card-label">Odeme niyeti</span>
+                  <h1>Odeme hazirligi</h1>
                 </div>
-                <div className="checkout-price-pill">{formatPrice(confirmedIntent.amount, confirmedIntent.currency)}</div>
               </div>
 
-              <div className="checkout-itinerary-grid">
+              <div className="turna-payment-grid">
+                <div className="turna-payment-field">
+                  <span>Promosyon Kodu</span>
+                  <button type="button">Promosyon kodu giriniz</button>
+                </div>
+                <div className="turna-payment-field">
+                  <span>Fatura Bilgileri</span>
+                  <strong>
+                    {confirmedIntent.billing_details.invoice_type === "company" ? "Sirket" : "Bireysel"} /{" "}
+                    {confirmedIntent.billing_details.full_name}
+                  </strong>
+                </div>
+              </div>
+
+              <div className="turna-card-form-grid">
+                <label className="turna-field">
+                  <span>Kart Numarasi</span>
+                  <input placeholder="0000 0000 0000 0000" readOnly value="4444 4444 4444 4444" />
+                </label>
+                <label className="turna-field">
+                  <span>Taksit Secenekleri</span>
+                  <input placeholder="Tek cekim" readOnly value="Tek cekim" />
+                </label>
+                <label className="turna-field">
+                  <span>Son Kullanma Tarihi</span>
+                  <input placeholder="AA / YY" readOnly value="12 / 30" />
+                </label>
+                <label className="turna-field">
+                  <span>CVV</span>
+                  <input placeholder="000" readOnly value="000" />
+                </label>
+              </div>
+
+              <div className="turna-inline-note">
+                Bu ekran mock seviyede odeme adimini temsil eder. Sonraki entegrasyonda iyzico checkout, callback ve
+                failover akisi bu yapinin ustune gelecek.
+              </div>
+            </section>
+
+            <section className="turna-process-card">
+              <div className="turna-section-title">
+                <strong>Rezervasyon verisi</strong>
+                <span>Bu intent ile birlikte giden temel veriler.</span>
+              </div>
+
+              <div className="turna-inline-grid">
                 <div>
-                  <span>Durum</span>
-                  <strong>{confirmedIntent.status}</strong>
+                  <span>Iletisim</span>
+                  <strong>{confirmedIntent.contact.email}</strong>
                 </div>
                 <div>
-                  <span>Sepet</span>
-                  <strong>{confirmedIntent.cart_id}</strong>
-                </div>
-                <div>
-                  <span>Item sayisi</span>
-                  <strong>{confirmedIntent.items.length}</strong>
+                  <span>Telefon</span>
+                  <strong>{confirmedIntent.contact.phone}</strong>
                 </div>
                 <div>
                   <span>Yolcu sayisi</span>
                   <strong>{confirmedIntent.travelers.length}</strong>
                 </div>
-              </div>
-
-              <div className="selection-note">
-                Iletisim: {confirmedIntent.contact.email} • {confirmedIntent.contact.phone}
-                <br />
-                Fatura: {confirmedIntent.billing_details.invoice_type === "company" ? "Sirket" : "Bireysel"} •{" "}
-                {confirmedIntent.billing_details.full_name}
-              </div>
-
-              <details className="checkout-disclosure">
-                <summary>Yolcu ve ek bilgiler</summary>
-                <div className="checkout-disclosure-body">
-                  <div className="selection-note">
-                    {confirmedIntent.travelers.map((traveler, index) => (
-                      <span key={`${traveler.first_name}-${traveler.last_name}-${index}`}>
-                        {index + 1}. {traveler.first_name} {traveler.last_name} • {traveler.traveler_type} • {traveler.birth_date}
-                        {index < confirmedIntent.travelers.length - 1 ? <br /> : null}
-                      </span>
-                    ))}
-                  </div>
-
-                  {confirmedIntent.special_requests &&
-                  (confirmedIntent.special_requests.seat_preference ||
-                    confirmedIntent.special_requests.meal_preference ||
-                    confirmedIntent.special_requests.accessibility_note) ? (
-                    <div className="selection-note">
-                      Koltuk: {confirmedIntent.special_requests.seat_preference || "-"}
-                      <br />
-                      Yemek: {confirmedIntent.special_requests.meal_preference || "-"}
-                      <br />
-                      Not: {confirmedIntent.special_requests.accessibility_note || "-"}
-                    </div>
-                  ) : null}
-
-                  <div className="selection-note">
-                    {confirmedIntent.billing_details.city}, {confirmedIntent.billing_details.country}
-                    <br />
-                    {confirmedIntent.billing_details.address_line}
-                  </div>
-                </div>
-              </details>
-            </article>
-          </section>
-
-          <aside className="selection-card checkout-summary-card">
-            <span className="eyebrow">Booking creation</span>
-            <h2>Rezervasyon acilisi</h2>
-
-            {feedback ? <div className="form-feedback success">{feedback}</div> : null}
-            {error ? <div className="form-feedback error">{error}</div> : null}
-
-            {booking ? (
-              <div className="selection-grid compact-grid">
-                <div>
-                  <span>Booking ref</span>
-                  <strong>{booking.booking_reference}</strong>
-                </div>
                 <div>
                   <span>Durum</span>
-                  <strong>{booking.status}</strong>
+                  <strong>{confirmedIntent.status}</strong>
+                </div>
+              </div>
+
+              <div className="turna-inline-note">
+                {confirmedIntent.travelers.map((traveler, index) => (
+                  <span key={`${traveler.first_name}-${traveler.last_name}-${index}`}>
+                    {index + 1}. {traveler.first_name} {traveler.last_name} / {traveler.traveler_type} /{" "}
+                    {traveler.birth_date}
+                    {index < confirmedIntent.travelers.length - 1 ? <br /> : null}
+                  </span>
+                ))}
+              </div>
+
+              {(confirmedIntent.special_requests?.seat_preference ||
+                confirmedIntent.special_requests?.meal_preference ||
+                confirmedIntent.special_requests?.accessibility_note) ? (
+                <div className="turna-inline-note">
+                  Koltuk: {confirmedIntent.special_requests?.seat_preference || "-"}
+                  <br />
+                  Yemek: {confirmedIntent.special_requests?.meal_preference || "-"}
+                  <br />
+                  Destek notu: {confirmedIntent.special_requests?.accessibility_note || "-"}
+                </div>
+              ) : null}
+            </section>
+          </div>
+
+          <aside className="turna-summary-panel">
+            <section className="turna-summary-card">
+              <div className="turna-summary-head">
+                <strong>Gidis</strong>
+              </div>
+
+              <div className="turna-itinerary-block">
+                <div className="turna-itinerary-row">
+                  <div>
+                    <strong>{formatTime(readString(payload, "departure_at"))}</strong>
+                    <span>{readString(payload, "origin") || "---"}</span>
+                  </div>
+                  <div className="turna-itinerary-middle">
+                    <span>{readNumber(payload, "duration_minutes")} dk</span>
+                    <p>{readString(payload, "provider", confirmedIntent.provider)}</p>
+                  </div>
+                  <div>
+                    <strong>{formatTime(readString(payload, "arrival_at"))}</strong>
+                    <span>{readString(payload, "destination") || "---"}</span>
+                  </div>
+                </div>
+
+                <div className="turna-summary-meta">
+                  <span>{readString(payload, "airline_name", primaryItem?.title || confirmedIntent.provider)}</span>
+                  <span>{readString(payload, "fare_family", "-")}</span>
+                </div>
+              </div>
+            </section>
+
+            <section className="turna-summary-card">
+              <div className="turna-summary-head">
+                <strong>Odeme detayi</strong>
+              </div>
+
+              <div className="turna-summary-list">
+                <div>
+                  <span>Biletler ({confirmedIntent.travelers.length} yolcu)</span>
+                  <strong>{formatPrice(totalPrice, confirmedIntent.currency)}</strong>
+                </div>
+                <div>
+                  <span>Bagaj</span>
+                  <strong>{readString(payload, "baggage_summary", "Dahil")}</strong>
+                </div>
+                <div>
+                  <span>Paket</span>
+                  <strong>{readString(payload, "fare_family", "-")}</strong>
                 </div>
                 <div>
                   <span>Toplam</span>
-                  <strong>{formatPrice(booking.total_amount, booking.currency)}</strong>
-                </div>
-                <div>
-                  <span>Item</span>
-                  <strong>{booking.item_count}</strong>
+                  <strong>{formatPrice(confirmedIntent.amount, confirmedIntent.currency)}</strong>
                 </div>
               </div>
-            ) : (
-              <div className="selection-note">
-                Bu ekranda odeme `paid` durumuna gecirilir ve booking-service tarafinda rezervasyon kaydi acilir.
-              </div>
-            )}
 
-            <button className="primary-action selection-action" disabled={isProcessing} onClick={handleConfirmAndCreateBooking} type="button">
-              {isProcessing ? "Isleniyor..." : "Odemeyi tamamlandi varsay"}
-            </button>
+              {feedback ? <div className="form-feedback success">{feedback}</div> : null}
+              {error ? <div className="form-feedback error">{error}</div> : null}
 
-            {booking ? (
-              <div className="selection-action-grid">
-                <Link className="ghost-action selection-action" href={`/bookings/${booking.booking_reference}`}>
-                  Rezervasyon detayina git
-                </Link>
-                <Link className="ghost-action selection-action" href="/account">
-                  Hesabim ekranina git
-                </Link>
-              </div>
-            ) : null}
+              <button className="turna-primary-button" disabled={isProcessing} onClick={handleConfirmAndCreateBooking} type="button">
+                {isProcessing ? "Isleniyor..." : "Odemeyi tamamla"}
+              </button>
+
+              {booking ? (
+                <div className="turna-stack-actions">
+                  <Link className="turna-secondary-button" href={`/bookings/${booking.booking_reference}`}>
+                    Rezervasyon detayina git
+                  </Link>
+                  <Link className="turna-secondary-button" href="/account">
+                    Hesabim ekranina git
+                  </Link>
+                </div>
+              ) : null}
+            </section>
           </aside>
         </div>
       </section>

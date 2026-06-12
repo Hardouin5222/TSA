@@ -34,11 +34,60 @@ type BillingForm = {
   tax_number: string;
 };
 
-const travelerTypeLabels: Record<string, string> = {
-  adult: "Yetiskin",
-  child: "Cocuk",
-  infant: "Bebek",
+type FlightItemSnapshot = {
+  airline_name: string;
+  origin: string;
+  destination: string;
+  departure_at: string;
+  arrival_at: string;
+  fare_family: string;
+  baggage_summary: string;
+  provider: string;
+  duration_minutes: number;
+  selected_fare_option_id: string | null;
 };
+
+function formatTime(value: string | undefined) {
+  if (!value) {
+    return "--:--";
+  }
+
+  return new Intl.DateTimeFormat("tr-TR", {
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(new Date(value));
+}
+
+function readString(payload: Record<string, unknown>, key: string, fallback = "") {
+  const value = payload[key];
+  return typeof value === "string" ? value : fallback;
+}
+
+function readNumber(payload: Record<string, unknown>, key: string, fallback = 0) {
+  const value = payload[key];
+  return typeof value === "number" ? value : fallback;
+}
+
+function extractFlightSnapshot(item: CartEnvelope["data"]["items"][number] | null): FlightItemSnapshot | null {
+  if (!item) {
+    return null;
+  }
+
+  const payload = item.item_payload;
+  return {
+    airline_name: readString(payload, "airline_name", item.title),
+    origin: readString(payload, "origin"),
+    destination: readString(payload, "destination"),
+    departure_at: readString(payload, "departure_at"),
+    arrival_at: readString(payload, "arrival_at"),
+    fare_family: readString(payload, "fare_family"),
+    baggage_summary: readString(payload, "baggage_summary"),
+    provider: readString(payload, "provider"),
+    duration_minutes: readNumber(payload, "duration_minutes"),
+    selected_fare_option_id:
+      typeof payload.selected_fare_option_id === "string" ? payload.selected_fare_option_id : null,
+  };
+}
 
 export function CartPageContent() {
   const [cart, setCart] = useState<CartEnvelope["data"] | null>(null);
@@ -60,19 +109,20 @@ export function CartPageContent() {
     },
   ]);
   const [specialRequests, setSpecialRequests] = useState({
-    seat_preference: "",
-    meal_preference: "",
+    seat_preference: "Koridor",
+    meal_preference: "Standart",
     accessibility_note: "",
   });
   const [billingDetails, setBillingDetails] = useState<BillingForm>({
     invoice_type: "individual",
     full_name: "",
     country: "Turkiye",
-    city: "",
+    city: "Istanbul",
     address_line: "",
     company_name: "",
     tax_number: "",
   });
+  const [insuranceSelected, setInsuranceSelected] = useState(false);
 
   useEffect(() => {
     const session = getSession();
@@ -117,8 +167,7 @@ export function CartPageContent() {
     });
     setBillingDetails((current) => ({
       ...current,
-      full_name:
-        current.full_name || `${session.user.first_name} ${session.user.last_name}`.trim(),
+      full_name: current.full_name || `${session.user.first_name} ${session.user.last_name}`.trim(),
     }));
   }, []);
 
@@ -143,6 +192,7 @@ export function CartPageContent() {
   }, [contact, travelers, billingDetails]);
 
   const primaryItem = cart?.items[0] ?? null;
+  const flightSnapshot = extractFlightSnapshot(primaryItem);
 
   function updateContactField(name: keyof typeof contact, value: string) {
     setContact((current) => ({ ...current, [name]: value }));
@@ -255,392 +305,453 @@ export function CartPageContent() {
         <span>Sepet</span>
       </div>
 
-      <section className="results-shell">
-        <div className="checkout-stepper">
-          <div className="checkout-step is-complete">
-            <span>1</span>
-            <strong>Ucus secimi</strong>
+      <section className="turna-process-shell">
+        <div className="turna-process-bar">
+          <div className="turna-process-brand">
+            <strong>Travel Super App</strong>
+            <span>Checkout flow</span>
           </div>
-          <div className="checkout-step is-active">
-            <span>2</span>
-            <strong>Yolcu bilgileri</strong>
-          </div>
-          <div className={`checkout-step${paymentIntent ? " is-active" : ""}`}>
-            <span>3</span>
-            <strong>Odeme</strong>
-          </div>
-        </div>
 
-        <div className="results-header-card compact">
-          <span className="eyebrow">Checkout Foundation</span>
-          <h1>Yolcu bilgileri ve odeme hazirligi</h1>
-          <p>
-            Bu adimda sadece gerekli bilgileri topluyoruz. Opsiyonel tercihleri asagiya saklayip satin alma
-            akisindaki gorsel yogunlugu dusuruyoruz.
-          </p>
+          <div className="turna-process-steps" aria-label="Satin alma adimlari">
+            <div className="turna-process-step is-complete">
+              <span>1</span>
+              <strong>Ucus secimi</strong>
+            </div>
+            <div className="turna-process-step is-active">
+              <span>2</span>
+              <strong>Yolcu bilgileri</strong>
+            </div>
+            <div className={`turna-process-step${paymentIntent ? " is-active" : ""}`}>
+              <span>3</span>
+              <strong>Odeme</strong>
+            </div>
+          </div>
         </div>
 
         {isLoading ? (
-          <div className="selection-card">
+          <div className="turna-process-card">
             <p>Sepet yukleniyor...</p>
           </div>
         ) : null}
 
         {!isLoading && cart && cart.items.length > 0 ? (
-          <div className="results-layout checkout-layout">
-            <div className="results-list checkout-main">
-              {primaryItem ? (
-                <article className="checkout-itinerary-card">
-                  <div className="checkout-itinerary-header">
-                    <div>
-                      <span className="eyebrow">Secili teklif</span>
-                      <h2>{primaryItem.title}</h2>
-                      <p>
-                        {primaryItem.item_type} • ref {primaryItem.reference_id}
-                      </p>
-                    </div>
-                    <div className="checkout-price-pill">{formatPrice(primaryItem.unit_price, primaryItem.currency)}</div>
-                  </div>
-                  <div className="checkout-itinerary-grid">
-                    <div>
-                      <span>Urun adedi</span>
-                      <strong>{primaryItem.quantity}</strong>
-                    </div>
-                    <div>
-                      <span>Para birimi</span>
-                      <strong>{primaryItem.currency}</strong>
-                    </div>
-                    <div>
-                      <span>Toplam sepet</span>
-                      <strong>{formatPrice(cart.total_amount, cart.currency)}</strong>
-                    </div>
-                    <div>
-                      <span>Yolcu sayisi</span>
-                      <strong>{travelers.length}</strong>
-                    </div>
-                  </div>
-                </article>
-              ) : null}
-
-              <article className="auth-form-card checkout-form-card">
-                <div className="checkout-section-head">
+          <div className="turna-checkout-grid">
+            <div className="turna-checkout-main">
+              <section className="turna-process-card turna-package-summary-card">
+                <div className="turna-card-head">
                   <div>
-                    <span className="eyebrow">Zorunlu alanlar</span>
-                    <h2>Yolcu ve iletisim bilgileri</h2>
+                    <span className="turna-card-label">Gidis paketi</span>
+                    <h1>Yolcu bilgileri ve odeme hazirligi</h1>
                   </div>
-                  <p>Rezervasyonu tamamlamak icin gerekli bilgileri burada topluyoruz.</p>
+                  <Link className="turna-link-action" href="/flights?origin=IST&destination=AYT&departure_date=2026-07-18&return_date=2026-07-22&adult_count=2">
+                    Secimi degistir
+                  </Link>
                 </div>
 
-                <form className="auth-form" onSubmit={handleTravelerSubmit}>
-                  <section className="checkout-section-card">
-                    <div className="checkout-block-title">
-                      <strong>Iletisim</strong>
-                      <span>Bilet ve rezervasyon bildirimi bu kanaldan gider.</span>
+                {flightSnapshot ? (
+                  <div className="turna-package-summary-row">
+                    <div className="turna-package-chip">
+                      <span>Paket Secimi</span>
+                      <strong>{flightSnapshot.fare_family || "Standart paket"}</strong>
                     </div>
-                    <div className="auth-split-grid">
-                      <label className="auth-field">
-                        <span>E-posta</span>
-                        <input
-                          autoComplete="email"
-                          onChange={(event) => updateContactField("email", event.target.value)}
-                          placeholder="ornek@email.com"
-                          required
-                          type="email"
-                          value={contact.email}
-                        />
-                      </label>
-                      <label className="auth-field">
-                        <span>Telefon</span>
-                        <input
-                          autoComplete="tel"
-                          onChange={(event) => updateContactField("phone", event.target.value)}
-                          placeholder="+90 5xx xxx xx xx"
-                          required
-                          value={contact.phone}
-                        />
-                      </label>
+                    <div className="turna-package-chip">
+                      <span>Hava yolu</span>
+                      <strong>{flightSnapshot.airline_name}</strong>
                     </div>
-                  </section>
+                    <div className="turna-package-chip">
+                      <span>Hat</span>
+                      <strong>
+                        {flightSnapshot.origin} - {flightSnapshot.destination}
+                      </strong>
+                    </div>
+                  </div>
+                ) : null}
+              </section>
 
-                  <section className="checkout-section-card">
-                    <div className="checkout-block-title">
-                      <strong>Yolcular</strong>
-                      <span>Ilk satin alma akisini 3 tik mantiginda korumak icin sade tutulur.</span>
-                    </div>
+              <form className="turna-checkout-form" onSubmit={handleTravelerSubmit}>
+                <section className="turna-process-card">
+                  <div className="turna-section-title">
+                    <strong>Yolcu bilgileri</strong>
+                    <span>Temel alanlari once gosteriyoruz, kalan tercihler altta.</span>
+                  </div>
 
-                    <div className="checkout-travelers">
-                      {travelers.map((traveler, index) => (
-                        <article className="traveler-card" key={`traveler-${index}`}>
-                          <div className="traveler-card-head">
-                            <strong>Yolcu {index + 1}</strong>
-                            <div className="traveler-card-actions">
-                              <span>{travelerTypeLabels[traveler.traveler_type]}</span>
-                              {travelers.length > 1 ? (
-                                <button className="ghost-action compact" onClick={() => removeTraveler(index)} type="button">
-                                  Kaldir
-                                </button>
-                              ) : null}
-                            </div>
+                  <div className="turna-passenger-stack">
+                    {travelers.map((traveler, index) => (
+                      <article className="turna-passenger-card" key={`traveler-${index}`}>
+                        <div className="turna-passenger-head">
+                          <div>
+                            <strong>Yetiskin</strong>
+                            <span>Yolcu {index + 1}</span>
                           </div>
+                          {travelers.length > 1 ? (
+                            <button className="turna-text-button" onClick={() => removeTraveler(index)} type="button">
+                              Kaldir
+                            </button>
+                          ) : null}
+                        </div>
 
-                          <div className="auth-split-grid">
-                            <label className="auth-field">
-                              <span>Ad</span>
-                              <input
-                                onChange={(event) => updateTraveler(index, "first_name", event.target.value)}
-                                placeholder="Ad"
-                                required
-                                value={traveler.first_name}
-                              />
-                            </label>
-                            <label className="auth-field">
-                              <span>Soyad</span>
-                              <input
-                                onChange={(event) => updateTraveler(index, "last_name", event.target.value)}
-                                placeholder="Soyad"
-                                required
-                                value={traveler.last_name}
-                              />
-                            </label>
-                          </div>
-
-                          <div className="auth-split-grid">
-                            <label className="auth-field">
-                              <span>Dogum tarihi</span>
-                              <input
-                                onChange={(event) => updateTraveler(index, "birth_date", event.target.value)}
-                                required
-                                type="date"
-                                value={traveler.birth_date}
-                              />
-                            </label>
-                            <label className="auth-field">
-                              <span>Yolcu tipi</span>
-                              <select
-                                onChange={(event) => updateTraveler(index, "traveler_type", event.target.value)}
-                                value={traveler.traveler_type}
-                              >
-                                <option value="adult">Yetiskin</option>
-                                <option value="child">Cocuk</option>
-                                <option value="infant">Bebek</option>
-                              </select>
-                            </label>
-                          </div>
-                        </article>
-                      ))}
-                    </div>
-
-                    <div className="auth-cta-row">
-                      <button className="ghost-action" onClick={addTraveler} type="button">
-                        Yolcu ekle
-                      </button>
-                    </div>
-                  </section>
-
-                  <details className="checkout-disclosure">
-                    <summary>Ozel istekler</summary>
-                    <div className="checkout-disclosure-body">
-                      <div className="auth-split-grid">
-                        <label className="auth-field">
-                          <span>Koltuk tercihi</span>
-                          <select
-                            onChange={(event) => updateSpecialRequestField("seat_preference", event.target.value)}
-                            value={specialRequests.seat_preference}
-                          >
-                            <option value="">Secilmedi</option>
-                            <option value="window">Cam kenari</option>
-                            <option value="aisle">Koridor</option>
-                            <option value="front">On siralar</option>
-                          </select>
-                        </label>
-                        <label className="auth-field">
-                          <span>Yemek tercihi</span>
-                          <select
-                            onChange={(event) => updateSpecialRequestField("meal_preference", event.target.value)}
-                            value={specialRequests.meal_preference}
-                          >
-                            <option value="">Secilmedi</option>
-                            <option value="standard">Standart</option>
-                            <option value="vegetarian">Vejetaryen</option>
-                            <option value="child">Cocuk menusu</option>
-                          </select>
-                        </label>
-                      </div>
-                      <label className="auth-field">
-                        <span>Erisilebilirlik veya destek notu</span>
-                        <textarea
-                          onChange={(event) => updateSpecialRequestField("accessibility_note", event.target.value)}
-                          placeholder="Tekerlekli sandalye, yardim ihtiyaci, oncelikli destek..."
-                          rows={3}
-                          value={specialRequests.accessibility_note}
-                        />
-                      </label>
-                    </div>
-                  </details>
-
-                  <details className="checkout-disclosure">
-                    <summary>Fatura bilgileri</summary>
-                    <div className="checkout-disclosure-body">
-                      <div className="auth-split-grid">
-                        <label className="auth-field">
-                          <span>Fatura tipi</span>
-                          <select
-                            onChange={(event) => updateBillingField("invoice_type", event.target.value)}
-                            value={billingDetails.invoice_type}
-                          >
-                            <option value="individual">Bireysel</option>
-                            <option value="company">Sirket</option>
-                          </select>
-                        </label>
-                        <label className="auth-field">
-                          <span>Fatura unvani</span>
-                          <input
-                            onChange={(event) => updateBillingField("full_name", event.target.value)}
-                            placeholder="Ad Soyad veya sirket yetkilisi"
-                            required
-                            value={billingDetails.full_name}
-                          />
-                        </label>
-                      </div>
-                      <div className="auth-split-grid">
-                        <label className="auth-field">
-                          <span>Ulke</span>
-                          <input
-                            onChange={(event) => updateBillingField("country", event.target.value)}
-                            required
-                            value={billingDetails.country}
-                          />
-                        </label>
-                        <label className="auth-field">
-                          <span>Sehir</span>
-                          <input
-                            onChange={(event) => updateBillingField("city", event.target.value)}
-                            placeholder="Istanbul"
-                            required
-                            value={billingDetails.city}
-                          />
-                        </label>
-                      </div>
-                      <label className="auth-field">
-                        <span>Adres</span>
-                        <textarea
-                          onChange={(event) => updateBillingField("address_line", event.target.value)}
-                          placeholder="Mahalle, sokak, bina, ilce"
-                          required
-                          rows={3}
-                          value={billingDetails.address_line}
-                        />
-                      </label>
-                      {billingDetails.invoice_type === "company" ? (
-                        <div className="auth-split-grid">
-                          <label className="auth-field">
-                            <span>Sirket unvani</span>
+                        <div className="turna-field-grid">
+                          <label className="turna-field">
+                            <span>Ad</span>
                             <input
-                              onChange={(event) => updateBillingField("company_name", event.target.value)}
-                              placeholder="ABC Turizm A.S."
+                              onChange={(event) => updateTraveler(index, "first_name", event.target.value)}
+                              placeholder="Ad"
                               required
-                              value={billingDetails.company_name}
+                              value={traveler.first_name}
                             />
                           </label>
-                          <label className="auth-field">
-                            <span>Vergi no</span>
+
+                          <label className="turna-field">
+                            <span>Soyad</span>
                             <input
-                              onChange={(event) => updateBillingField("tax_number", event.target.value)}
-                              placeholder="1234567890"
+                              onChange={(event) => updateTraveler(index, "last_name", event.target.value)}
+                              placeholder="Soyad"
                               required
-                              value={billingDetails.tax_number}
+                              value={traveler.last_name}
                             />
+                          </label>
+
+                          <label className="turna-field">
+                            <span>Dogum tarihi</span>
+                            <input
+                              onChange={(event) => updateTraveler(index, "birth_date", event.target.value)}
+                              required
+                              type="date"
+                              value={traveler.birth_date}
+                            />
+                          </label>
+
+                          <label className="turna-field">
+                            <span>Yolcu tipi</span>
+                            <select
+                              onChange={(event) => updateTraveler(index, "traveler_type", event.target.value)}
+                              value={traveler.traveler_type}
+                            >
+                              <option value="adult">Yetiskin</option>
+                              <option value="child">Cocuk</option>
+                              <option value="infant">Bebek</option>
+                            </select>
                           </label>
                         </div>
-                      ) : null}
+                      </article>
+                    ))}
+                  </div>
+
+                  <button className="turna-outline-button" onClick={addTraveler} type="button">
+                    Yolcu ekle
+                  </button>
+                </section>
+
+                <section className="turna-process-card">
+                  <div className="turna-section-title">
+                    <strong>Bagaj</strong>
+                    <span>Secilen paket kapsaminda dahil olan alanlar.</span>
+                  </div>
+
+                  <div className="turna-baggage-grid">
+                    <div className="turna-baggage-card">
+                      <strong>Kabin bagaji</strong>
+                      <span>{flightSnapshot?.baggage_summary.split("+")[0]?.trim() || "8 kg kabin"}</span>
+                      <em>Dahil</em>
                     </div>
-                  </details>
-                </form>
-              </article>
+                    <div className="turna-baggage-card">
+                      <strong>Check-in bagaji</strong>
+                      <span>{flightSnapshot?.baggage_summary.split("+")[1]?.trim() || "Bagaj yok"}</span>
+                      <em>Dahil</em>
+                    </div>
+                  </div>
+                </section>
+
+                <section className="turna-process-card">
+                  <div className="turna-section-title">
+                    <strong>Iletisim bilgileri</strong>
+                    <span>Bilet ve rezervasyon bildirimi bu bilgilere gider.</span>
+                  </div>
+
+                  <div className="turna-field-grid">
+                    <label className="turna-field">
+                      <span>E-posta</span>
+                      <input
+                        autoComplete="email"
+                        onChange={(event) => updateContactField("email", event.target.value)}
+                        placeholder="ornek@email.com"
+                        required
+                        type="email"
+                        value={contact.email}
+                      />
+                    </label>
+
+                    <label className="turna-field">
+                      <span>Telefon</span>
+                      <input
+                        autoComplete="tel"
+                        onChange={(event) => updateContactField("phone", event.target.value)}
+                        placeholder="+90 5xx xxx xx xx"
+                        required
+                        value={contact.phone}
+                      />
+                    </label>
+                  </div>
+
+                  <label className="turna-checkline">
+                    <input type="checkbox" />
+                    <span>Firsatlar ve kampanyalar hakkinda e-posta veya SMS almak istiyorum.</span>
+                  </label>
+                </section>
+
+                <section className="turna-process-card turna-insurance-card">
+                  <div className="turna-insurance-head">
+                    <div>
+                      <strong>Biletini korumaya al</strong>
+                      <span>Opsiyonel koruma urunu. Simdilik mock seviye hazirlik olarak duruyor.</span>
+                    </div>
+
+                    <label className="turna-insurance-toggle">
+                      <span>Onerilen</span>
+                      <input
+                        checked={insuranceSelected}
+                        onChange={() => setInsuranceSelected((current) => !current)}
+                        type="checkbox"
+                      />
+                    </label>
+                  </div>
+
+                  <div className="turna-insurance-body">
+                    <p>Bilet tutarinin buyuk kismini iade eden koruma urunlerini bu bolgeye baglayacagiz.</p>
+                    <strong>1 kisi icin hazir fiyat alani</strong>
+                  </div>
+                </section>
+
+                <details className="turna-process-card turna-collapse-card">
+                  <summary>Ozel istekler</summary>
+                  <div className="turna-collapse-body">
+                    <div className="turna-field-grid">
+                      <label className="turna-field">
+                        <span>Koltuk tercihi</span>
+                        <select
+                          onChange={(event) => updateSpecialRequestField("seat_preference", event.target.value)}
+                          value={specialRequests.seat_preference}
+                        >
+                          <option value="">Secilmedi</option>
+                          <option value="Koridor">Koridor</option>
+                          <option value="Cam kenari">Cam kenari</option>
+                          <option value="On siralar">On siralar</option>
+                        </select>
+                      </label>
+
+                      <label className="turna-field">
+                        <span>Yemek tercihi</span>
+                        <select
+                          onChange={(event) => updateSpecialRequestField("meal_preference", event.target.value)}
+                          value={specialRequests.meal_preference}
+                        >
+                          <option value="">Secilmedi</option>
+                          <option value="Standart">Standart</option>
+                          <option value="Vejetaryen">Vejetaryen</option>
+                          <option value="Cocuk menusu">Cocuk menusu</option>
+                        </select>
+                      </label>
+                    </div>
+
+                    <label className="turna-field">
+                      <span>Erisilebilirlik veya destek notu</span>
+                      <textarea
+                        onChange={(event) => updateSpecialRequestField("accessibility_note", event.target.value)}
+                        placeholder="Tekerlekli sandalye, yardim ihtiyaci, oncelikli destek..."
+                        rows={3}
+                        value={specialRequests.accessibility_note}
+                      />
+                    </label>
+                  </div>
+                </details>
+
+                <details className="turna-process-card turna-collapse-card">
+                  <summary>Fatura bilgileri</summary>
+                  <div className="turna-collapse-body">
+                    <div className="turna-field-grid">
+                      <label className="turna-field">
+                        <span>Fatura tipi</span>
+                        <select
+                          onChange={(event) => updateBillingField("invoice_type", event.target.value)}
+                          value={billingDetails.invoice_type}
+                        >
+                          <option value="individual">Bireysel</option>
+                          <option value="company">Sirket</option>
+                        </select>
+                      </label>
+
+                      <label className="turna-field">
+                        <span>Fatura unvani</span>
+                        <input
+                          onChange={(event) => updateBillingField("full_name", event.target.value)}
+                          placeholder="Ad Soyad veya sirket yetkilisi"
+                          required
+                          value={billingDetails.full_name}
+                        />
+                      </label>
+
+                      <label className="turna-field">
+                        <span>Ulke</span>
+                        <input
+                          onChange={(event) => updateBillingField("country", event.target.value)}
+                          required
+                          value={billingDetails.country}
+                        />
+                      </label>
+
+                      <label className="turna-field">
+                        <span>Sehir</span>
+                        <input
+                          onChange={(event) => updateBillingField("city", event.target.value)}
+                          placeholder="Istanbul"
+                          required
+                          value={billingDetails.city}
+                        />
+                      </label>
+                    </div>
+
+                    <label className="turna-field">
+                      <span>Adres</span>
+                      <textarea
+                        onChange={(event) => updateBillingField("address_line", event.target.value)}
+                        placeholder="Mahalle, sokak, bina, ilce"
+                        required
+                        rows={3}
+                        value={billingDetails.address_line}
+                      />
+                    </label>
+
+                    {billingDetails.invoice_type === "company" ? (
+                      <div className="turna-field-grid">
+                        <label className="turna-field">
+                          <span>Sirket unvani</span>
+                          <input
+                            onChange={(event) => updateBillingField("company_name", event.target.value)}
+                            placeholder="ABC Turizm A.S."
+                            required
+                            value={billingDetails.company_name}
+                          />
+                        </label>
+
+                        <label className="turna-field">
+                          <span>Vergi no</span>
+                          <input
+                            onChange={(event) => updateBillingField("tax_number", event.target.value)}
+                            placeholder="1234567890"
+                            required
+                            value={billingDetails.tax_number}
+                          />
+                        </label>
+                      </div>
+                    ) : null}
+                  </div>
+                </details>
+              </form>
             </div>
 
-            <aside className="selection-card checkout-summary-card">
-              <span className="eyebrow">Odeme hazirligi</span>
-              <h2>Checkout ozeti</h2>
-
-              <div className="checkout-summary-line">
-                <span>Toplam</span>
-                <strong>{formatPrice(cart.total_amount, cart.currency)}</strong>
-              </div>
-              <div className="checkout-summary-line">
-                <span>Sepet urunu</span>
-                <strong>{cart.items.length}</strong>
-              </div>
-              <div className="checkout-summary-line">
-                <span>Yolcu</span>
-                <strong>{travelers.length}</strong>
-              </div>
-              <div className="checkout-summary-line">
-                <span>Iletisim</span>
-                <strong>{contact.email && contact.phone ? "hazir" : "eksik"}</strong>
-              </div>
-
-              <div className="selection-grid compact-grid">
-                <div>
-                  <span>Fatura</span>
-                  <strong>{billingDetails.invoice_type === "company" ? "Sirket" : "Bireysel"}</strong>
+            <aside className="turna-summary-panel">
+              <section className="turna-summary-card">
+                <div className="turna-summary-head">
+                  <strong>Gidis</strong>
                 </div>
-                <div>
-                  <span>Ozel istek</span>
-                  <strong>
-                    {specialRequests.seat_preference || specialRequests.meal_preference || specialRequests.accessibility_note
-                      ? "Var"
-                      : "Yok"}
-                  </strong>
+
+                {flightSnapshot ? (
+                  <div className="turna-itinerary-block">
+                    <div className="turna-itinerary-row">
+                      <div>
+                        <strong>{formatTime(flightSnapshot.departure_at)}</strong>
+                        <span>{flightSnapshot.origin}</span>
+                      </div>
+                      <div className="turna-itinerary-middle">
+                        <span>{flightSnapshot.duration_minutes} dk</span>
+                        <p>{flightSnapshot.provider}</p>
+                      </div>
+                      <div>
+                        <strong>{formatTime(flightSnapshot.arrival_at)}</strong>
+                        <span>{flightSnapshot.destination}</span>
+                      </div>
+                    </div>
+
+                    <div className="turna-summary-meta">
+                      <span>{flightSnapshot.airline_name}</span>
+                      <span>{flightSnapshot.fare_family || "Paket secimi"}</span>
+                    </div>
+                  </div>
+                ) : null}
+              </section>
+
+              <section className="turna-summary-card">
+                <div className="turna-summary-head">
+                  <strong>Odeme detayi</strong>
                 </div>
-              </div>
 
-              {feedback ? <div className="form-feedback success">{feedback}</div> : null}
-              {error ? <div className="form-feedback error">{error}</div> : null}
-
-              {paymentIntent ? (
-                <div className="selection-note">
-                  Intent olustu: {paymentIntent.provider} • {paymentIntent.status}
-                  <br />
-                  Ref: {paymentIntent.provider_reference}
+                <div className="turna-summary-list">
+                  <div>
+                    <span>Biletler ({travelers.length} yolcu)</span>
+                    <strong>{formatPrice(cart.total_amount, cart.currency)}</strong>
+                  </div>
+                  <div>
+                    <span>Bagaj</span>
+                    <strong>Dahil</strong>
+                  </div>
+                  <div>
+                    <span>Gidis ucus paketi</span>
+                    <strong>{flightSnapshot?.fare_family || "-"}</strong>
+                  </div>
+                  <div>
+                    <span>Toplam</span>
+                    <strong>{formatPrice(cart.total_amount, cart.currency)}</strong>
+                  </div>
                 </div>
-              ) : (
-                <div className="selection-note">
-                  Once bu adimi tamamlayip payment intent olusturuyoruz. Gercek iyzico baglantisinda sonraki
-                  ekranda kart ve callback akisina gecilecek.
+
+                <div className="turna-inline-grid">
+                  <div>
+                    <span>Iletisim</span>
+                    <strong>{contact.email && contact.phone ? "Hazir" : "Eksik"}</strong>
+                  </div>
+                  <div>
+                    <span>Fatura</span>
+                    <strong>{billingDetails.invoice_type === "company" ? "Sirket" : "Bireysel"}</strong>
+                  </div>
                 </div>
-              )}
 
-              <button
-                className="primary-action selection-action"
-                disabled={isCreatingIntent || !isCheckoutReady}
-                onClick={handleCreatePaymentIntent}
-                type="button"
-              >
-                {isCreatingIntent ? "Intent olusturuluyor..." : "Odeme adimina gec"}
-              </button>
+                {feedback ? <div className="form-feedback success">{feedback}</div> : null}
+                {error ? <div className="form-feedback error">{error}</div> : null}
 
-              {paymentIntent ? (
-                <Link className="ghost-action selection-action" href={paymentIntent.checkout_url}>
-                  Mock checkout ekranina git
-                </Link>
-              ) : null}
+                {paymentIntent ? (
+                  <div className="turna-inline-note">
+                    Intent olustu: {paymentIntent.provider} / {paymentIntent.status}
+                    <br />
+                    Ref: {paymentIntent.provider_reference}
+                  </div>
+                ) : (
+                  <div className="turna-inline-note">
+                    Bu adimda yolcu, iletisim ve fatura verisini baglayip sonra odeme ekranina geciyoruz.
+                  </div>
+                )}
 
-              <div className="checkout-help-card">
-                <strong>Bu ekranda neyi sadeleştirdik?</strong>
-                <ul className="checkout-help-list">
-                  <li>Zorunlu alanlar en uste alindi.</li>
-                  <li>Opsiyonel bolumler gizli sekmeye tasindi.</li>
-                  <li>Sag panel sadece karar vermek icin gereken bilgileri tutuyor.</li>
-                </ul>
-              </div>
+                <button
+                  className="turna-primary-button"
+                  disabled={isCreatingIntent || !isCheckoutReady}
+                  onClick={handleCreatePaymentIntent}
+                  type="button"
+                >
+                  {isCreatingIntent ? "Hazirlaniyor..." : "Odeme adimina gec"}
+                </button>
+
+                {paymentIntent ? (
+                  <Link className="turna-secondary-button" href={paymentIntent.checkout_url}>
+                    Mock checkout ekranina git
+                  </Link>
+                ) : null}
+              </section>
             </aside>
           </div>
         ) : null}
 
         {!isLoading && (!cart || cart.items.length === 0) ? (
-          <div className="selection-card">
-            <span className="eyebrow">Sepet bos</span>
+          <div className="turna-process-card">
+            <span className="turna-card-label">Sepet bos</span>
             <h2>Henuz secili bir teklif yok.</h2>
             <p>Ucus sonuclarindan teklif secip tekrar buraya donebilirsin.</p>
             <div className="auth-cta-row">

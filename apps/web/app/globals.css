@@ -1900,6 +1900,415 @@ textarea {
   font-size: 1.05rem;
 }
 
+.turna-process-shell {
+  display: grid;
+  gap: 20px;
+}
+
+.turna-process-bar {
+  display: grid;
+  gap: 18px;
+  padding: 24px 28px;
+  border: 1px solid rgba(20, 52, 45, 0.08);
+  border-radius: 28px;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 18px 42px rgba(20, 52, 45, 0.06);
+}
+
+.turna-process-brand {
+  display: grid;
+  gap: 4px;
+}
+
+.turna-process-brand strong {
+  font-family: var(--font-display), serif;
+  font-size: 1.9rem;
+  line-height: 1;
+}
+
+.turna-process-brand span,
+.turna-card-label,
+.turna-section-title span,
+.turna-inline-note,
+.turna-payment-field span,
+.turna-summary-meta span,
+.turna-summary-list span,
+.turna-inline-grid span,
+.turna-passenger-head span,
+.turna-baggage-card span {
+  color: var(--muted);
+}
+
+.turna-process-steps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.turna-process-step {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 48px;
+  padding: 0 16px;
+  border: 1px solid rgba(20, 52, 45, 0.08);
+  border-radius: 999px;
+  background: rgba(250, 248, 243, 0.9);
+  color: var(--muted);
+}
+
+.turna-process-step span {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  background: rgba(20, 52, 45, 0.08);
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.turna-process-step strong {
+  font-size: 0.92rem;
+}
+
+.turna-process-step.is-active,
+.turna-process-step.is-complete {
+  color: var(--text);
+}
+
+.turna-process-step.is-active span,
+.turna-process-step.is-complete span {
+  color: white;
+  background: linear-gradient(135deg, var(--brand), #0c4a45);
+}
+
+.turna-checkout-grid {
+  display: grid;
+  gap: 20px;
+  align-items: start;
+}
+
+.turna-checkout-main,
+.turna-summary-panel,
+.turna-checkout-form {
+  display: grid;
+  gap: 18px;
+}
+
+.turna-process-card,
+.turna-summary-card,
+.turna-passenger-card,
+.turna-baggage-card,
+.turna-payment-field {
+  border: 1px solid rgba(20, 52, 45, 0.08);
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 16px 38px rgba(20, 52, 45, 0.06);
+}
+
+.turna-process-card,
+.turna-summary-card {
+  padding: 24px;
+}
+
+.turna-card-head,
+.turna-section-title,
+.turna-passenger-head,
+.turna-insurance-head,
+.turna-summary-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.turna-card-head h1,
+.turna-summary-head h2 {
+  margin: 8px 0 0;
+  font-family: var(--font-display), serif;
+}
+
+.turna-card-head h1 {
+  font-size: clamp(1.9rem, 3vw, 3rem);
+}
+
+.turna-link-action,
+.turna-text-button {
+  color: var(--brand-strong);
+  font-weight: 800;
+}
+
+.turna-intro-copy {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.7;
+}
+
+.turna-package-summary-row,
+.turna-baggage-grid,
+.turna-payment-grid,
+.turna-inline-grid,
+.turna-card-form-grid,
+.turna-field-grid,
+.turna-stack-actions,
+.turna-summary-list {
+  display: grid;
+  gap: 14px;
+}
+
+.turna-package-chip,
+.turna-inline-grid div,
+.turna-summary-list div {
+  display: grid;
+  gap: 6px;
+  padding: 16px;
+  border: 1px solid rgba(20, 52, 45, 0.08);
+  border-radius: 18px;
+  background: rgba(249, 247, 241, 0.82);
+}
+
+.turna-package-chip strong,
+.turna-inline-grid strong,
+.turna-summary-list strong,
+.turna-baggage-card strong,
+.turna-payment-field strong {
+  font-size: 1.05rem;
+}
+
+.turna-section-title {
+  margin-bottom: 2px;
+}
+
+.turna-section-title strong {
+  font-size: 1.35rem;
+}
+
+.turna-passenger-stack {
+  display: grid;
+  gap: 14px;
+}
+
+.turna-passenger-card {
+  padding: 18px;
+}
+
+.turna-field {
+  display: grid;
+  gap: 8px;
+}
+
+.turna-field span {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #4d5a57;
+}
+
+.turna-field input,
+.turna-field select,
+.turna-field textarea {
+  width: 100%;
+  min-height: 56px;
+  padding: 14px 16px;
+  border: 1px solid rgba(20, 52, 45, 0.12);
+  border-radius: 16px;
+  background: #f4f8ff;
+  color: var(--text);
+  font: inherit;
+}
+
+.turna-field textarea {
+  min-height: 110px;
+  resize: vertical;
+}
+
+.turna-outline-button,
+.turna-primary-button,
+.turna-secondary-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 56px;
+  padding: 0 20px;
+  border-radius: 16px;
+  font-size: 1.05rem;
+  font-weight: 800;
+}
+
+.turna-outline-button {
+  border: 1px solid rgba(20, 52, 45, 0.12);
+  background: white;
+  color: var(--text);
+}
+
+.turna-primary-button {
+  border: 0;
+  color: white;
+  background: linear-gradient(135deg, var(--brand), #0c4a45);
+}
+
+.turna-primary-button:disabled {
+  opacity: 0.6;
+}
+
+.turna-secondary-button {
+  border: 1px solid rgba(20, 52, 45, 0.12);
+  background: rgba(255, 255, 255, 0.96);
+  color: var(--text);
+}
+
+.turna-checkline {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  color: var(--muted);
+}
+
+.turna-checkline input {
+  width: 22px;
+  height: 22px;
+  margin-top: 1px;
+}
+
+.turna-baggage-card {
+  display: grid;
+  gap: 8px;
+  padding: 18px;
+}
+
+.turna-baggage-card em {
+  color: var(--brand-strong);
+  font-style: normal;
+  font-weight: 800;
+}
+
+.turna-insurance-card {
+  gap: 18px;
+  background: linear-gradient(180deg, rgba(222, 237, 255, 0.62), rgba(255, 255, 255, 0.96));
+}
+
+.turna-insurance-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 800;
+  color: var(--brand-strong);
+}
+
+.turna-insurance-toggle input {
+  width: 22px;
+  height: 22px;
+}
+
+.turna-insurance-body {
+  display: grid;
+  gap: 10px;
+  color: #34514b;
+}
+
+.turna-collapse-card {
+  overflow: hidden;
+}
+
+.turna-collapse-card summary {
+  cursor: pointer;
+  list-style: none;
+  padding: 24px;
+  font-size: 1.1rem;
+  font-weight: 800;
+}
+
+.turna-collapse-card summary::-webkit-details-marker {
+  display: none;
+}
+
+.turna-collapse-body {
+  display: grid;
+  gap: 16px;
+  padding: 0 24px 24px;
+}
+
+.turna-summary-panel {
+  position: sticky;
+  top: 24px;
+}
+
+.turna-summary-card {
+  display: grid;
+  gap: 16px;
+}
+
+.turna-summary-head strong {
+  font-size: 1.15rem;
+}
+
+.turna-itinerary-block {
+  display: grid;
+  gap: 14px;
+}
+
+.turna-itinerary-row {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 16px;
+}
+
+.turna-itinerary-row > div {
+  display: grid;
+  gap: 4px;
+}
+
+.turna-itinerary-row > div:last-child {
+  text-align: right;
+}
+
+.turna-itinerary-row strong {
+  font-size: 2rem;
+  line-height: 1;
+}
+
+.turna-itinerary-middle {
+  min-width: 130px;
+  text-align: center;
+}
+
+.turna-summary-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.turna-inline-note {
+  line-height: 1.7;
+}
+
+.turna-payment-card {
+  gap: 18px;
+}
+
+.turna-payment-field {
+  padding: 16px;
+}
+
+.turna-payment-field button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  min-height: 54px;
+  padding: 0 16px;
+  border: 1px solid rgba(20, 52, 45, 0.08);
+  border-radius: 16px;
+  background: #fff;
+  color: var(--muted);
+  font: inherit;
+}
+
+.turna-stack-actions {
+  gap: 12px;
+}
+
 .ghost-action.compact {
   min-height: 48px;
 }
@@ -2055,6 +2464,21 @@ textarea {
   .turna-package-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
+
+  .turna-process-bar {
+    grid-template-columns: 1fr auto;
+    align-items: center;
+  }
+
+  .turna-package-summary-row,
+  .turna-inline-grid,
+  .turna-summary-list,
+  .turna-card-form-grid,
+  .turna-baggage-grid,
+  .turna-field-grid,
+  .turna-payment-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 @media (min-width: 1120px) {
@@ -2079,6 +2503,10 @@ textarea {
 
   .checkout-layout {
     grid-template-columns: minmax(0, 1fr) 360px;
+  }
+
+  .turna-checkout-grid {
+    grid-template-columns: minmax(0, 1fr) 370px;
   }
 
   .turna-grid {
@@ -2127,5 +2555,29 @@ textarea {
 
   .turna-top-links {
     display: none;
+  }
+
+  .turna-summary-panel {
+    position: static;
+  }
+}
+
+@media (max-width: 767px) {
+  .turna-process-card,
+  .turna-summary-card {
+    padding: 18px;
+  }
+
+  .turna-card-head h1 {
+    font-size: 2rem;
+  }
+
+  .turna-itinerary-row {
+    grid-template-columns: 1fr;
+    text-align: left;
+  }
+
+  .turna-itinerary-row > div:last-child {
+    text-align: left;
   }
 }
