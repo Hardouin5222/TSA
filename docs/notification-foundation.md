@@ -9,8 +9,11 @@ Rezervasyon sonrasi email, sms ve push akislari icin provider bagimsiz bir notif
 - `notification-service`
 - `POST /api/notifications/booking-confirmations`
 - `GET /api/notifications`
+- `GET /api/notifications/{notification_id}`
 - `notifications` tablosu
 - booking-service icinden booking confirmation notification olusturma
+- booking confirmation template render temeli
+- booking detail ekraninda notification icerigi gorunurlugu
 
 ## Mimari Karar
 
@@ -31,7 +34,7 @@ Bu karar operasyonel olarak dogrudur cunku odeme ve rezervasyon kaydini email go
 ## Sonraki Adim
 
 1. RabbitMQ consumer ile async dispatch
-2. Email template render katmani
+2. Provider adapter katmani (SMTP/Resend/Sendgrid)
 3. Iyzico callback sonrasi confirmation trigger
 4. SMS ve push kanallari
 5. Admin panel notification log ekrani

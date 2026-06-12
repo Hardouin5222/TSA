@@ -1,7 +1,7 @@
 import { BookingDetailContent } from "@/components/booking/booking-detail-content";
 import { serverApiRequest } from "@/lib/api";
 import type { BookingDetailEnvelope } from "@/types/booking";
-import type { NotificationListEnvelope } from "@/types/notification";
+import type { NotificationDetailEnvelope, NotificationListEnvelope } from "@/types/notification";
 
 export default async function BookingDetailPage({
   params,
@@ -14,10 +14,15 @@ export default async function BookingDetailPage({
     serverApiRequest<NotificationListEnvelope>(`/api/notifications/?booking_reference=${bookingReference}`),
   ]);
 
+  const notificationSummary = notificationPayload.data.notifications[0] || null;
+  const notificationDetail = notificationSummary
+    ? await serverApiRequest<NotificationDetailEnvelope>(`/api/notifications/${notificationSummary.notification_id}`)
+    : null;
+
   return (
     <BookingDetailContent
       booking={bookingPayload.data}
-      notification={notificationPayload.data.notifications[0] || null}
+      notification={notificationDetail?.data || null}
     />
   );
 }

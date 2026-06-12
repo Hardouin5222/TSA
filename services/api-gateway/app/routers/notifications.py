@@ -62,6 +62,20 @@ async def claim_guest_notifications(payload: dict) -> dict:
     return response.json()
 
 
+@router.get("/{notification_id}")
+async def get_notification_detail(notification_id: str) -> dict:
+    target_url = f"{settings.notification_service_base_url}{settings.api_prefix}/notifications/{notification_id}"
+
+    async with httpx.AsyncClient(timeout=20.0) as client:
+        response = await client.get(target_url)
+
+    if response.status_code >= 400:
+        detail = response.json().get("detail", "Notification service request failed")
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=detail)
+
+    return response.json()
+
+
 @router.post("/{notification_id}/dispatch-mock")
 async def dispatch_notification(notification_id: str) -> dict:
     target_url = (

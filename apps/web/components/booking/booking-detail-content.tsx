@@ -5,7 +5,7 @@ import { useState } from "react";
 
 import { apiRequest } from "@/lib/api";
 import type { BookingDetailEnvelope } from "@/types/booking";
-import type { NotificationDispatchEnvelope, NotificationListEnvelope } from "@/types/notification";
+import type { NotificationDetailEnvelope, NotificationDispatchEnvelope } from "@/types/notification";
 
 function formatPrice(value: number, currency: string) {
   return new Intl.NumberFormat("tr-TR", {
@@ -30,7 +30,7 @@ export function BookingDetailContent({
   notification,
 }: {
   booking: BookingDetailEnvelope["data"];
-  notification: NotificationListEnvelope["data"]["notifications"][number] | null;
+  notification: NotificationDetailEnvelope["data"] | null;
 }) {
   const [notificationState, setNotificationState] = useState(notification);
   const [notificationFeedback, setNotificationFeedback] = useState<string | null>(null);
@@ -172,6 +172,22 @@ export function BookingDetailContent({
             </div>
             {notificationState?.content_preview ? (
               <div className="selection-note">{notificationState.content_preview}</div>
+            ) : null}
+            {notificationState?.subject ? (
+              <div className="selection-note">
+                Konu: {notificationState.subject}
+                {notificationState.sent_at ? (
+                  <>
+                    <br />
+                    Gonderim zamani: {formatDate(notificationState.sent_at)}
+                  </>
+                ) : null}
+              </div>
+            ) : null}
+            {notificationState?.text_body ? (
+              <div className="selection-note" style={{ whiteSpace: "pre-line" }}>
+                {notificationState.text_body}
+              </div>
             ) : null}
             {notificationFeedback ? <div className="form-feedback success">{notificationFeedback}</div> : null}
             {notificationError ? <div className="form-feedback error">{notificationError}</div> : null}

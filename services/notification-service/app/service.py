@@ -10,10 +10,12 @@ from app.schemas import (
     ClaimGuestNotificationResponse,
     CreateBookingConfirmationNotificationRequest,
     DispatchNotificationResponse,
+    NotificationDetailResponse,
     NotificationListItemResponse,
     NotificationListResponse,
     NotificationResponse,
 )
+from app.templates import render_booking_confirmation_template
 
 
 def create_booking_confirmation_notification(
@@ -32,6 +34,7 @@ def create_booking_confirmation_notification(
 
     recipient_resolved = bool(payload.recipient_email or payload.recipient_phone)
     status = "queued" if recipient_resolved else "pending_recipient"
+    rendered = render_booking_confirmation_template(payload)
 
     notification = Notification(
         booking_reference=payload.booking_reference,
@@ -44,12 +47,14 @@ def create_booking_confirmation_notification(
         provider="mock-notifier",
         recipient_email=payload.recipient_email,
         recipient_phone=payload.recipient_phone,
-        subject=f"Rezervasyon onayi - {payload.booking_reference}",
-        content_preview=f"{payload.trip_summary} rezervasyonun hazir. Toplam {payload.total_amount} {payload.currency}.",
+        subject=rendered["subject"],
+        content_preview=rendered["content_preview"],
         payload={
             "booking_url": payload.booking_url,
             "trip_summary": payload.trip_summary,
             "locale": payload.locale,
+            "text_body": rendered["text_body"],
+            "html_body": rendered["html_body"],
         },
         total_amount=payload.total_amount,
         currency=payload.currency,
@@ -88,9 +93,37 @@ def list_notifications(
                 recipient_phone=item.recipient_phone,
                 provider=item.provider,
                 created_at=item.created_at.isoformat(),
+                subject=item.subject,
+                content_preview=item.content_preview,
+                provider_reference=item.provider_reference,
+                sent_at=item.sent_at.isoformat() if item.sent_at else None,
             )
             for item in notifications
         ]
+    )
+
+
+def get_notification_detail(notification_id: str, db: Session) -> NotificationDetailResponse:
+    notification = db.get(Notification, notification_id)
+    if not notification:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Notification not found")
+
+    return NotificationDetailResponse(
+        notification_id=str(notification.id),
+        booking_reference=notification.booking_reference,
+        template_code=notification.template_code,
+        channel=notification.channel,
+        status=notification.status,
+        recipient_email=notification.recipient_email,
+        recipient_phone=notification.recipient_phone,
+        provider=notification.provider,
+        subject=notification.subject,
+        content_preview=notification.content_preview,
+        provider_reference=notification.provider_reference,
+        sent_at=notification.sent_at.isoformat() if notification.sent_at else None,
+        created_at=notification.created_at.isoformat(),
+        text_body=notification.payload.get("text_body"),
+        html_body=notification.payload.get("html_body"),
     )
 
 

@@ -41,10 +41,32 @@ class NotificationListItemResponse(BaseModel):
     recipient_phone: str | None
     provider: str
     created_at: str
+    subject: str | None = None
+    content_preview: str | None = None
+    provider_reference: str | None = None
+    sent_at: str | None = None
 
 
 class NotificationListResponse(BaseModel):
     notifications: list[NotificationListItemResponse]
+
+
+class NotificationDetailResponse(BaseModel):
+    notification_id: str
+    booking_reference: str
+    template_code: str
+    channel: str
+    status: str
+    recipient_email: str | None
+    recipient_phone: str | None
+    provider: str
+    subject: str | None = None
+    content_preview: str | None = None
+    provider_reference: str | None = None
+    sent_at: str | None = None
+    created_at: str
+    text_body: str | None = None
+    html_body: str | None = None
 
 
 class DispatchNotificationResponse(BaseModel):
