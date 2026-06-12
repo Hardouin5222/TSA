@@ -15,6 +15,16 @@ type PaymentIntentEnvelope = {
     cart_id: string;
     user_id: string | null;
     guest_session_id: string | null;
+    contact: {
+      email: string;
+      phone: string;
+    };
+    travelers: Array<{
+      traveler_type: string;
+      first_name: string;
+      last_name: string;
+      birth_date: string;
+    }>;
     items: Array<{
       id: string;
       item_type: string;

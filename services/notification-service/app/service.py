@@ -4,7 +4,9 @@ from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.core.settings import get_notification_service_settings
 from app.models import Notification
+from app.providers import NotificationProviderError, get_notification_provider
 from app.schemas import (
     ClaimGuestNotificationRequest,
     ClaimGuestNotificationResponse,
@@ -16,6 +18,9 @@ from app.schemas import (
     NotificationResponse,
 )
 from app.templates import render_booking_confirmation_template
+
+settings = get_notification_service_settings()
+provider = get_notification_provider(settings)
 
 
 def create_booking_confirmation_notification(
@@ -44,7 +49,7 @@ def create_booking_confirmation_notification(
         template_code="booking_confirmation",
         channel=payload.channel,
         status=status,
-        provider="mock-notifier",
+        provider=provider.provider_name,
         recipient_email=payload.recipient_email,
         recipient_phone=payload.recipient_phone,
         subject=rendered["subject"],
@@ -53,12 +58,13 @@ def create_booking_confirmation_notification(
             "booking_url": payload.booking_url,
             "trip_summary": payload.trip_summary,
             "locale": payload.locale,
+            "sender_name": settings.notification_sender_name,
+            "sender_email": settings.notification_sender_email,
             "text_body": rendered["text_body"],
             "html_body": rendered["html_body"],
         },
         total_amount=payload.total_amount,
         currency=payload.currency,
-        provider_reference=f"notif_{payload.booking_reference.lower()}",
     )
     db.add(notification)
     db.commit()
@@ -162,8 +168,19 @@ def dispatch_notification(notification_id: str, db: Session) -> DispatchNotifica
     if not notification.recipient_email and not notification.recipient_phone:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Notification recipient is missing")
 
-    notification.status = "sent"
-    notification.sent_at = datetime.now(UTC)
+    try:
+        dispatch_result = provider.dispatch(notification)
+    except NotificationProviderError as exc:
+        notification.status = "failed"
+        notification.error_message = str(exc)
+        db.commit()
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)) from exc
+
+    notification.provider = dispatch_result.provider
+    notification.provider_reference = dispatch_result.provider_reference
+    notification.status = dispatch_result.status
+    notification.error_message = dispatch_result.error_message
+    notification.sent_at = datetime.now(UTC) if dispatch_result.status == "sent" else None
     db.commit()
     db.refresh(notification)
 

@@ -53,5 +53,15 @@ export type BookingDetailEnvelope = {
       currency: string;
       item_payload: Record<string, unknown>;
     }>;
+    contact: {
+      email: string;
+      phone: string;
+    } | null;
+    travelers: Array<{
+      traveler_type: string;
+      first_name: string;
+      last_name: string;
+      birth_date: string;
+    }>;
   };
 };

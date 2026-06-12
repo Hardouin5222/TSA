@@ -12,6 +12,18 @@ class BookingSourceItem(BaseModel):
     item_payload: dict
 
 
+class BookingContact(BaseModel):
+    email: str = Field(min_length=3)
+    phone: str = Field(min_length=6)
+
+
+class BookingTraveler(BaseModel):
+    traveler_type: str = Field(default="adult", min_length=1)
+    first_name: str = Field(min_length=1)
+    last_name: str = Field(min_length=1)
+    birth_date: str = Field(min_length=8)
+
+
 class CreateBookingFromPaymentRequest(BaseModel):
     payment_intent_id: str = Field(min_length=1)
     provider_reference: str = Field(min_length=1)
@@ -23,6 +35,8 @@ class CreateBookingFromPaymentRequest(BaseModel):
     total_amount: float = Field(gt=0)
     currency: str
     items: list[BookingSourceItem]
+    contact: BookingContact
+    travelers: list[BookingTraveler] = Field(min_length=1)
 
 
 class BookingResponse(BaseModel):
@@ -58,6 +72,8 @@ class BookingDetailResponse(BaseModel):
     guest_session_id: str | None
     created_at: str
     items: list[BookingItemResponse]
+    contact: BookingContact | None = None
+    travelers: list[BookingTraveler] = Field(default_factory=list)
 
 
 class BookingListItemResponse(BaseModel):

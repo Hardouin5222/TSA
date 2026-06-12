@@ -152,6 +152,29 @@ export function BookingDetailContent({
               <br />
               Cart id: {booking.cart_id}
             </div>
+            {booking.contact ? (
+              <div className="selection-grid">
+                <div>
+                  <span>Iletisim e-postasi</span>
+                  <strong>{booking.contact.email}</strong>
+                </div>
+                <div>
+                  <span>Iletisim telefonu</span>
+                  <strong>{booking.contact.phone}</strong>
+                </div>
+              </div>
+            ) : null}
+            {booking.travelers.length > 0 ? (
+              <div className="selection-note">
+                {booking.travelers.map((traveler, index) => (
+                  <span key={`${traveler.first_name}-${traveler.last_name}-${index}`}>
+                    Yolcu {index + 1}: {traveler.first_name} {traveler.last_name} • {traveler.traveler_type} •{" "}
+                    {traveler.birth_date}
+                    {index < booking.travelers.length - 1 ? <br /> : null}
+                  </span>
+                ))}
+              </div>
+            ) : null}
             <div className="selection-grid">
               <div>
                 <span>Bildirim</span>

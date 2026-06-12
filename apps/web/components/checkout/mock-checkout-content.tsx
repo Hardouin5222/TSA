@@ -12,6 +12,16 @@ type PaymentIntentDetail = PaymentIntentEnvelope["data"] & {
   cart_id: string;
   user_id: string | null;
   guest_session_id: string | null;
+  contact: {
+    email: string;
+    phone: string;
+  };
+  travelers: Array<{
+    traveler_type: string;
+    first_name: string;
+    last_name: string;
+    birth_date: string;
+  }>;
   items: Array<{
     id: string;
     item_type: string;
@@ -66,11 +76,13 @@ export function MockCheckoutContent({
           cart_id: confirmed.data.cart_id,
           user_id: confirmed.data.user_id,
           guest_session_id: confirmed.data.guest_session_id,
-          customer_email: getSession()?.user.email || null,
-          customer_phone: getSession()?.user.phone_number || null,
+          customer_email: confirmed.data.contact.email || getSession()?.user.email || null,
+          customer_phone: confirmed.data.contact.phone || getSession()?.user.phone_number || null,
           total_amount: confirmed.data.amount,
           currency: confirmed.data.currency,
           items: confirmed.data.items,
+          contact: confirmed.data.contact,
+          travelers: confirmed.data.travelers,
         },
       });
 
@@ -128,6 +140,22 @@ export function MockCheckoutContent({
                   <span className="field-caption">Checkout yolu</span>
                   <strong>{confirmedIntent.checkout_url}</strong>
                 </div>
+                <div>
+                  <span className="field-caption">Iletisim</span>
+                  <strong>{confirmedIntent.contact.email}</strong>
+                </div>
+                <div>
+                  <span className="field-caption">Yolcu sayisi</span>
+                  <strong>{confirmedIntent.travelers.length}</strong>
+                </div>
+              </div>
+              <div className="selection-note">
+                {confirmedIntent.travelers.map((traveler, index) => (
+                  <span key={`${traveler.first_name}-${traveler.last_name}-${index}`}>
+                    {index + 1}. {traveler.first_name} {traveler.last_name} • {traveler.traveler_type}
+                    {index < confirmedIntent.travelers.length - 1 ? <br /> : null}
+                  </span>
+                ))}
               </div>
             </article>
           </section>

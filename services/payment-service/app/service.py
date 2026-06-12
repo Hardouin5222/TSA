@@ -25,7 +25,11 @@ def create_payment_intent(payload: CreatePaymentIntentRequest, db: Session) -> P
         status="pending",
         amount=payload.total_amount,
         currency=payload.currency,
-        item_snapshot={"items": [item.model_dump() for item in payload.items]},
+        item_snapshot={
+            "items": [item.model_dump() for item in payload.items],
+            "contact": payload.contact.model_dump(),
+            "travelers": [traveler.model_dump() for traveler in payload.travelers],
+        },
         provider_reference=provider_reference,
         checkout_url=f"/checkout/mock/{provider_reference}",
     )
@@ -52,6 +56,8 @@ def get_payment_intent(provider_reference: str, db: Session) -> PaymentIntentDet
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Payment intent not found")
 
     items = payment_intent.item_snapshot.get("items", [])
+    contact = payment_intent.item_snapshot.get("contact", {})
+    travelers = payment_intent.item_snapshot.get("travelers", [])
     return PaymentIntentDetailResponse(
         payment_intent_id=str(payment_intent.id),
         provider=payment_intent.provider,
@@ -64,6 +70,8 @@ def get_payment_intent(provider_reference: str, db: Session) -> PaymentIntentDet
         user_id=payment_intent.user_id,
         guest_session_id=payment_intent.guest_session_id,
         items=items,
+        contact=contact,
+        travelers=travelers,
     )
 
 

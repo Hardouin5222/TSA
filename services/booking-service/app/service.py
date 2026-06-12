@@ -9,11 +9,13 @@ from sqlalchemy.orm import Session
 from app.models import Booking, BookingItem
 from app.core.settings import get_booking_service_settings
 from app.schemas import (
+    BookingContact,
     BookingDetailResponse,
     BookingItemResponse,
     BookingListItemResponse,
     BookingListResponse,
     BookingResponse,
+    BookingTraveler,
     ClaimGuestBookingRequest,
     ClaimGuestBookingResponse,
     CreateBookingFromPaymentRequest,
@@ -54,6 +56,7 @@ def _serialize_booking_summary(booking: Booking, items: list[BookingItem]) -> Bo
 
 
 def _serialize_booking_detail(booking: Booking, items: list[BookingItem]) -> BookingDetailResponse:
+    checkout_context = items[0].item_payload.get("checkout_context", {}) if items else {}
     return BookingDetailResponse(
         booking_id=str(booking.id),
         booking_reference=booking.booking_reference,
@@ -67,6 +70,8 @@ def _serialize_booking_detail(booking: Booking, items: list[BookingItem]) -> Boo
         guest_session_id=booking.guest_session_id,
         created_at=booking.created_at.isoformat(),
         items=[_serialize_booking_item(item) for item in items],
+        contact=BookingContact(**checkout_context["contact"]) if checkout_context.get("contact") else None,
+        travelers=[BookingTraveler(**traveler) for traveler in checkout_context.get("travelers", [])],
     )
 
 
@@ -107,7 +112,13 @@ def create_booking_from_payment(payload: CreateBookingFromPaymentRequest, db: Se
                 quantity=item.quantity,
                 unit_price=item.unit_price,
                 currency=item.currency,
-                item_payload=item.item_payload,
+                item_payload={
+                    **item.item_payload,
+                    "checkout_context": {
+                        "contact": payload.contact.model_dump(),
+                        "travelers": [traveler.model_dump() for traveler in payload.travelers],
+                    },
+                },
             )
         )
 
@@ -185,7 +196,9 @@ def _create_booking_confirmation_notification(
         "currency": booking.currency,
         "total_amount": float(booking.total_amount),
         "booking_url": f"/bookings/{booking.booking_reference}",
-        "trip_summary": payload.items[0].title if payload.items else booking.booking_reference,
+        "trip_summary": f"{payload.items[0].title} • {payload.travelers[0].first_name} {payload.travelers[0].last_name}"
+        if payload.items and payload.travelers
+        else booking.booking_reference,
     }
 
     try:

@@ -9,5 +9,15 @@ export type PaymentIntentEnvelope = {
     amount: number;
     currency: string;
     checkout_url: string;
+    contact?: {
+      email: string;
+      phone: string;
+    };
+    travelers?: Array<{
+      traveler_type: string;
+      first_name: string;
+      last_name: string;
+      birth_date: string;
+    }>;
   };
 };
