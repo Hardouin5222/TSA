@@ -96,6 +96,9 @@ export function MockCheckoutContent({
     () => confirmedIntent.items.reduce((sum, item) => sum + item.unit_price * item.quantity, 0),
     [confirmedIntent.items],
   );
+  const hasSeatPreference = Boolean(confirmedIntent.special_requests?.seat_preference);
+  const hasMealPreference = Boolean(confirmedIntent.special_requests?.meal_preference);
+  const hasSupportNote = Boolean(confirmedIntent.special_requests?.accessibility_note);
 
   async function handleConfirmAndCreateBooking() {
     setIsProcessing(true);
@@ -183,7 +186,7 @@ export function MockCheckoutContent({
               <div className="turna-payment-grid">
                 <div className="turna-payment-field">
                   <span>Promosyon Kodu</span>
-                  <button type="button">Promosyon kodu giriniz</button>
+                  <input placeholder="Promosyon kodu giriniz" readOnly value="" />
                 </div>
                 <div className="turna-payment-field">
                   <span>Fatura Bilgileri</span>
@@ -254,15 +257,21 @@ export function MockCheckoutContent({
                 ))}
               </div>
 
-              {(confirmedIntent.special_requests?.seat_preference ||
-                confirmedIntent.special_requests?.meal_preference ||
-                confirmedIntent.special_requests?.accessibility_note) ? (
+              {hasSeatPreference || hasMealPreference || hasSupportNote ? (
                 <div className="turna-inline-note">
-                  Koltuk: {confirmedIntent.special_requests?.seat_preference || "-"}
-                  <br />
-                  Yemek: {confirmedIntent.special_requests?.meal_preference || "-"}
-                  <br />
-                  Destek notu: {confirmedIntent.special_requests?.accessibility_note || "-"}
+                  {hasSeatPreference ? (
+                    <>
+                      Koltuk: {confirmedIntent.special_requests?.seat_preference}
+                      <br />
+                    </>
+                  ) : null}
+                  {hasMealPreference ? (
+                    <>
+                      Yemek: {confirmedIntent.special_requests?.meal_preference}
+                      <br />
+                    </>
+                  ) : null}
+                  {hasSupportNote ? <>Destek notu: {confirmedIntent.special_requests?.accessibility_note}</> : null}
                 </div>
               ) : null}
             </section>

@@ -1592,6 +1592,35 @@ textarea {
   background: rgba(20, 52, 45, 0.12);
 }
 
+.turna-switch-button {
+  position: relative;
+  width: 52px;
+  height: 30px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(20, 52, 45, 0.12);
+}
+
+.turna-switch-button.is-active {
+  background: linear-gradient(135deg, var(--brand), #0c4a45);
+}
+
+.turna-switch-thumb {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: white;
+  box-shadow: 0 6px 14px rgba(20, 52, 45, 0.18);
+  transition: transform 180ms ease;
+}
+
+.turna-switch-button.is-active .turna-switch-thumb {
+  transform: translateX(22px);
+}
+
 .turna-filter-card {
   display: grid;
   gap: 6px;
@@ -2303,6 +2332,16 @@ textarea {
   background: #fff;
   color: var(--muted);
   font: inherit;
+}
+
+.turna-payment-field input {
+  width: 100%;
+  min-height: 54px;
+  padding: 0 16px;
+  border: 1px solid rgba(20, 52, 45, 0.08);
+  border-radius: 16px;
+  background: #fff;
+  color: var(--text);
 }
 
 .turna-stack-actions {

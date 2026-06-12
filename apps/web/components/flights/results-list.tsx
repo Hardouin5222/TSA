@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useMemo, useState } from "react";
 
 import { apiRequest } from "@/lib/api";
 import { getSession } from "@/lib/auth";
@@ -58,6 +58,18 @@ function buildOfferFromFareOption(offer: FlightOffer, fareOption: FareOption): F
   };
 }
 
+function buildDateTabs(firstDepartureAt: string | undefined) {
+  const baseDate = new Date(firstDepartureAt ?? `${new Date().toISOString().slice(0, 10)}T08:00:00`);
+  return [-1, 0, 1].map((offset) => {
+    const next = new Date(baseDate);
+    next.setDate(baseDate.getDate() + offset);
+    return {
+      key: offset,
+      label: formatDateLabel(next.toISOString()),
+    };
+  });
+}
+
 export function ResultsList({ data }: { data: FlightSearchEnvelope["data"] }) {
   const router = useRouter();
   const [sortMode, setSortMode] = useState<SortMode>("price");
@@ -70,6 +82,10 @@ export function ResultsList({ data }: { data: FlightSearchEnvelope["data"] }) {
   const [cartFeedback, setCartFeedback] = useState<string | null>(null);
   const [cartError, setCartError] = useState<string | null>(null);
   const [isAddingToCart, setIsAddingToCart] = useState(false);
+  const [priceAlertEnabled, setPriceAlertEnabled] = useState(false);
+  const [activeDateOffset, setActiveDateOffset] = useState(0);
+  const [showPriceCalendar, setShowPriceCalendar] = useState(false);
+  const [helperMessage, setHelperMessage] = useState<string | null>(null);
 
   const airlineGroups = useMemo(() => {
     const counts = new Map<string, { name: string; count: number }>();
@@ -119,23 +135,14 @@ export function ResultsList({ data }: { data: FlightSearchEnvelope["data"] }) {
     return offers;
   }, [data.offers, directOnly, oneStopOnly, selectedAirlines, sortMode]);
 
-  const dateTabs = useMemo(() => {
-    const firstOffer = data.offers[0];
-    const baseDate = new Date(firstOffer?.departure_at ?? `${new Date().toISOString().slice(0, 10)}T08:00:00`);
-    return [-1, 0, 1].map((offset) => {
-      const next = new Date(baseDate);
-      next.setDate(baseDate.getDate() + offset);
-      return {
-        key: offset,
-        label: formatDateLabel(next.toISOString()),
-        active: offset === 0,
-      };
-    });
-  }, [data.offers]);
+  const dateTabs = useMemo(() => buildDateTabs(data.offers[0]?.departure_at), [data.offers]);
 
   const selectedCartLabel = cartState
     ? `Sepette ${cartState.items.length} urun var. Toplam ${formatPrice(cartState.total_amount, cartState.currency)}`
     : null;
+
+  const activeFareOption =
+    activeOffer?.fare_options.find((option) => option.id === selectedFareOptionId) ?? activeOffer?.fare_options[0] ?? null;
 
   function toggleAirline(code: string) {
     setSelectedAirlines((current) =>
@@ -146,11 +153,43 @@ export function ResultsList({ data }: { data: FlightSearchEnvelope["data"] }) {
   function openPackageModal(offer: FlightOffer) {
     setActiveOffer(offer);
     setSelectedFareOptionId(offer.selected_fare_option_id || offer.fare_options[0]?.id || null);
+    setHelperMessage(null);
   }
 
   function closePackageModal() {
     setActiveOffer(null);
     setSelectedFareOptionId(null);
+  }
+
+  function handleDateSelection(offset: number) {
+    setActiveDateOffset(offset);
+    if (offset !== 0) {
+      setHelperMessage("Farkli gun fiyatlari canli supplier baglantisi geldiginde ayni akisla yansiyacak.");
+      return;
+    }
+    setHelperMessage(null);
+  }
+
+  function handleTogglePriceAlert() {
+    setPriceAlertEnabled((current) => !current);
+    setHelperMessage(
+      priceAlertEnabled
+        ? "Fiyat alarmi kapatildi."
+        : "Fiyat alarmi hazir. Gercek bildirim servisi baglandiginda e-posta veya push ile calisacak.",
+    );
+  }
+
+  function handleSearchEdit() {
+    router.push("/#search");
+  }
+
+  function handleTogglePriceCalendar() {
+    setShowPriceCalendar((current) => !current);
+    setHelperMessage(
+      !showPriceCalendar
+        ? "Gunluk fiyat alani acildi. Canli fiyat takvimi supplier entegrasyonuyla beslenecek."
+        : null,
+    );
   }
 
   async function handleConfirmFareSelection() {
@@ -193,9 +232,6 @@ export function ResultsList({ data }: { data: FlightSearchEnvelope["data"] }) {
     }
   }
 
-  const activeFareOption =
-    activeOffer?.fare_options.find((option) => option.id === selectedFareOptionId) ?? activeOffer?.fare_options[0] ?? null;
-
   return (
     <section className="turna-shell">
       <div className="turna-toolbar">
@@ -223,25 +259,41 @@ export function ResultsList({ data }: { data: FlightSearchEnvelope["data"] }) {
 
       <div className="turna-body" id="results">
         <aside className="turna-vertical-nav" aria-hidden="true">
-          <span>✈</span>
-          <span>🛏</span>
-          <span>🚘</span>
-          <span>🎫</span>
-          <span>📱</span>
+          <span>UC</span>
+          <span>OT</span>
+          <span>AR</span>
+          <span>ET</span>
+          <span>MO</span>
         </aside>
 
         <div className="turna-content">
           <div className="turna-search-strip">
             <div className="turna-search-main">
-              <strong>{data.route_label.replace("â†’", "→")}</strong>
+              <strong>{data.route_label}</strong>
               <span>{formatDateLabel(data.offers[0]?.departure_at ?? new Date().toISOString())}</span>
               <span>1 Yolcu</span>
             </div>
+
             <div className="turna-search-actions">
-              <button type="button">Aramayi duzenle</button>
-              <button type="button">Gunluk fiyatlar</button>
+              <button onClick={handleSearchEdit} type="button">
+                Aramayi duzenle
+              </button>
+              <button onClick={handleTogglePriceCalendar} type="button">
+                Gunluk fiyatlar
+              </button>
             </div>
           </div>
+
+          {showPriceCalendar ? (
+            <div className="turna-cart-banner">
+              <span>Canli fiyat takvimi supplier entegrasyonu geldiginde burada tarih bazli fiyat dagilimi gosterecek.</span>
+              <button className="turna-text-button" onClick={handleTogglePriceCalendar} type="button">
+                Kapat
+              </button>
+            </div>
+          ) : null}
+
+          {helperMessage ? <div className="form-feedback success">{helperMessage}</div> : null}
 
           <div className="turna-grid">
             <aside className="turna-filter-column">
@@ -250,7 +302,15 @@ export function ResultsList({ data }: { data: FlightSearchEnvelope["data"] }) {
                   <strong>Fiyat alarmi kur</strong>
                   <span>Fiyat degisirse haber verelim</span>
                 </div>
-                <div className="turna-switch" />
+
+                <button
+                  aria-label="Fiyat alarmi"
+                  className={`turna-switch-button${priceAlertEnabled ? " is-active" : ""}`}
+                  onClick={handleTogglePriceAlert}
+                  type="button"
+                >
+                  <span className="turna-switch-thumb" />
+                </button>
               </div>
 
               <div className="turna-filter-card">
@@ -300,7 +360,12 @@ export function ResultsList({ data }: { data: FlightSearchEnvelope["data"] }) {
             <div className="turna-results-column">
               <div className="turna-date-tabs">
                 {dateTabs.map((tab) => (
-                  <button className={tab.active ? "is-active" : ""} key={tab.key} type="button">
+                  <button
+                    className={activeDateOffset === tab.key ? "is-active" : ""}
+                    key={tab.key}
+                    onClick={() => handleDateSelection(tab.key)}
+                    type="button"
+                  >
                     {tab.label}
                   </button>
                 ))}
@@ -346,7 +411,7 @@ export function ResultsList({ data }: { data: FlightSearchEnvelope["data"] }) {
                         <div className="turna-offer-airline">
                           <strong>{offer.airline_name}</strong>
                           <p>
-                            {offer.provider} • {baseFareOption.label}
+                            {offer.provider} / {baseFareOption.label}
                           </p>
                         </div>
 
@@ -355,11 +420,13 @@ export function ResultsList({ data }: { data: FlightSearchEnvelope["data"] }) {
                             <strong>{formatTime(offer.departure_at)}</strong>
                             <span>{offer.origin}</span>
                           </div>
+
                           <div className="turna-offer-center">
                             <span>{offer.duration_minutes} dk</span>
                             <div className="timeline-line" />
                             <p>{offer.stop_count === 0 ? "Direkt Ucus" : `${offer.stop_count} aktarma`}</p>
                           </div>
+
                           <div>
                             <strong>{formatTime(offer.arrival_at)}</strong>
                             <span>{offer.destination}</span>
@@ -367,8 +434,8 @@ export function ResultsList({ data }: { data: FlightSearchEnvelope["data"] }) {
                         </div>
 
                         <div className="turna-offer-foot">
-                          <button className="turna-expand-chip" type="button">
-                            ▼
+                          <button className="turna-expand-chip" onClick={() => openPackageModal(offer)} type="button">
+                            +
                           </button>
                           <span>{baseFareOption.checked_baggage}</span>
                         </div>
@@ -388,9 +455,12 @@ export function ResultsList({ data }: { data: FlightSearchEnvelope["data"] }) {
 
             <aside className="turna-support-column" id="support">
               <div className="turna-support-card">
-                <div className="turna-support-visual">◎</div>
-                <strong>Canli destek hazir</strong>
-                <p>Sorulariniz icin bu alan sonradan operasyon ve destek akisina baglanacak.</p>
+                <div className="turna-support-visual">CS</div>
+                <strong>Canli destek hazirligi</strong>
+                <p>Gercek destek, operasyon ve cagri merkezi akisi baglandiginda bu alan yardim girisi olarak calisacak.</p>
+                <Link className="turna-secondary-button" href="/account">
+                  Hesabima git
+                </Link>
               </div>
             </aside>
           </div>
@@ -403,7 +473,7 @@ export function ResultsList({ data }: { data: FlightSearchEnvelope["data"] }) {
             <div className="turna-modal-head">
               <h3>Gidis paketini secin</h3>
               <button className="turna-modal-close" onClick={closePackageModal} type="button">
-                ×
+                Kapat
               </button>
             </div>
 
@@ -422,7 +492,7 @@ export function ResultsList({ data }: { data: FlightSearchEnvelope["data"] }) {
                         {fareOption.badge ? <span className="turna-package-badge">{fareOption.badge}</span> : null}
                         <strong>{fareOption.label}</strong>
                       </div>
-                      <span className="turna-package-radio">{isSelected ? "●" : "○"}</span>
+                      <span className="turna-package-radio">{isSelected ? "Secili" : "Sec"}</span>
                     </div>
 
                     <div className="turna-package-section">
@@ -450,13 +520,14 @@ export function ResultsList({ data }: { data: FlightSearchEnvelope["data"] }) {
               <div className="turna-modal-summary">
                 <strong>{activeOffer.airline_name}</strong>
                 <span>
-                  {activeFareOption?.label || activeOffer.fare_family} •{" "}
+                  {activeFareOption?.label || activeOffer.fare_family} /{" "}
                   {formatPrice(
                     activeOffer.price_amount + (activeFareOption?.price_delta ?? 0),
                     activeOffer.price_currency,
                   )}
                 </span>
               </div>
+
               <button className="turna-primary-cta" disabled={isAddingToCart} onClick={handleConfirmFareSelection} type="button">
                 {isAddingToCart ? "Sepete ekleniyor..." : "Sec ve ilerle"}
               </button>

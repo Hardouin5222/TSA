@@ -36,6 +36,9 @@ export function BookingDetailContent({
   const [notificationFeedback, setNotificationFeedback] = useState<string | null>(null);
   const [notificationError, setNotificationError] = useState<string | null>(null);
   const [isDispatching, setIsDispatching] = useState(false);
+  const hasSeatPreference = Boolean(booking.special_requests?.seat_preference);
+  const hasMealPreference = Boolean(booking.special_requests?.meal_preference);
+  const hasSupportNote = Boolean(booking.special_requests?.accessibility_note);
 
   async function handleMockDispatch() {
     if (!notificationState) {
@@ -148,10 +151,7 @@ export function BookingDetailContent({
               </section>
             ))}
 
-            {booking.special_requests &&
-            (booking.special_requests.seat_preference ||
-              booking.special_requests.meal_preference ||
-              booking.special_requests.accessibility_note) ? (
+            {hasSeatPreference || hasMealPreference || hasSupportNote ? (
               <section className="turna-process-card">
                 <div className="turna-section-title">
                   <strong>Ozel istekler</strong>
@@ -159,18 +159,24 @@ export function BookingDetailContent({
                 </div>
 
                 <div className="turna-inline-grid">
-                  <div>
-                    <span>Koltuk tercihi</span>
-                    <strong>{booking.special_requests.seat_preference || "-"}</strong>
-                  </div>
-                  <div>
-                    <span>Yemek tercihi</span>
-                    <strong>{booking.special_requests.meal_preference || "-"}</strong>
-                  </div>
-                  <div>
-                    <span>Destek notu</span>
-                    <strong>{booking.special_requests.accessibility_note || "-"}</strong>
-                  </div>
+                  {hasSeatPreference ? (
+                    <div>
+                      <span>Koltuk tercihi</span>
+                      <strong>{booking.special_requests?.seat_preference}</strong>
+                    </div>
+                  ) : null}
+                  {hasMealPreference ? (
+                    <div>
+                      <span>Yemek tercihi</span>
+                      <strong>{booking.special_requests?.meal_preference}</strong>
+                    </div>
+                  ) : null}
+                  {hasSupportNote ? (
+                    <div>
+                      <span>Destek notu</span>
+                      <strong>{booking.special_requests?.accessibility_note}</strong>
+                    </div>
+                  ) : null}
                 </div>
               </section>
             ) : null}

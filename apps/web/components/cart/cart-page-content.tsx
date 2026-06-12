@@ -47,6 +47,13 @@ type FlightItemSnapshot = {
   selected_fare_option_id: string | null;
 };
 
+type FareOptionSnapshot = {
+  id: string;
+  label: string;
+  seat_selection: boolean;
+  meal_included: boolean;
+};
+
 function formatTime(value: string | undefined) {
   if (!value) {
     return "--:--";
@@ -89,6 +96,37 @@ function extractFlightSnapshot(item: CartEnvelope["data"]["items"][number] | nul
   };
 }
 
+function extractSelectedFareOption(item: CartEnvelope["data"]["items"][number] | null): FareOptionSnapshot | null {
+  if (!item) {
+    return null;
+  }
+
+  const payload = item.item_payload as Record<string, unknown>;
+  const selectedId = typeof payload.selected_fare_option_id === "string" ? payload.selected_fare_option_id : null;
+  const rawFareOptions = Array.isArray(payload.fare_options) ? payload.fare_options : [];
+
+  const matchingOption =
+    rawFareOptions.find((entry) => {
+      if (!entry || typeof entry !== "object") {
+        return false;
+      }
+
+      return typeof (entry as { id?: unknown }).id === "string" && (entry as { id: string }).id === selectedId;
+    }) ?? rawFareOptions[0];
+
+  if (!matchingOption || typeof matchingOption !== "object") {
+    return null;
+  }
+
+  const option = matchingOption as Record<string, unknown>;
+  return {
+    id: typeof option.id === "string" ? option.id : "",
+    label: typeof option.label === "string" ? option.label : "",
+    seat_selection: Boolean(option.seat_selection),
+    meal_included: Boolean(option.meal_included),
+  };
+}
+
 export function CartPageContent() {
   const [cart, setCart] = useState<CartEnvelope["data"] | null>(null);
   const [feedback, setFeedback] = useState<string | null>(null);
@@ -109,8 +147,8 @@ export function CartPageContent() {
     },
   ]);
   const [specialRequests, setSpecialRequests] = useState({
-    seat_preference: "Koridor",
-    meal_preference: "Standart",
+    seat_preference: "",
+    meal_preference: "",
     accessibility_note: "",
   });
   const [billingDetails, setBillingDetails] = useState<BillingForm>({
@@ -193,6 +231,10 @@ export function CartPageContent() {
 
   const primaryItem = cart?.items[0] ?? null;
   const flightSnapshot = extractFlightSnapshot(primaryItem);
+  const selectedFareOption = extractSelectedFareOption(primaryItem);
+  const showSeatPreference = Boolean(selectedFareOption?.seat_selection);
+  const showMealPreference = Boolean(selectedFareOption?.meal_included);
+  const showSpecialRequestsSection = showSeatPreference || showMealPreference;
 
   function updateContactField(name: keyof typeof contact, value: string) {
     setContact((current) => ({ ...current, [name]: value }));
@@ -266,11 +308,13 @@ export function CartPageContent() {
             last_name: traveler.last_name.trim(),
             birth_date: traveler.birth_date,
           })),
-          special_requests: {
-            seat_preference: specialRequests.seat_preference || null,
-            meal_preference: specialRequests.meal_preference || null,
-            accessibility_note: specialRequests.accessibility_note || null,
-          },
+          special_requests: showSpecialRequestsSection
+            ? {
+                seat_preference: showSeatPreference ? specialRequests.seat_preference || null : null,
+                meal_preference: showMealPreference ? specialRequests.meal_preference || null : null,
+                accessibility_note: specialRequests.accessibility_note || null,
+              }
+            : null,
           billing_details: {
             invoice_type: billingDetails.invoice_type,
             full_name: billingDetails.full_name.trim(),
@@ -522,48 +566,54 @@ export function CartPageContent() {
                   </div>
                 </section>
 
-                <details className="turna-process-card turna-collapse-card">
-                  <summary>Ozel istekler</summary>
-                  <div className="turna-collapse-body">
-                    <div className="turna-field-grid">
-                      <label className="turna-field">
-                        <span>Koltuk tercihi</span>
-                        <select
-                          onChange={(event) => updateSpecialRequestField("seat_preference", event.target.value)}
-                          value={specialRequests.seat_preference}
-                        >
-                          <option value="">Secilmedi</option>
-                          <option value="Koridor">Koridor</option>
-                          <option value="Cam kenari">Cam kenari</option>
-                          <option value="On siralar">On siralar</option>
-                        </select>
-                      </label>
+                {showSpecialRequestsSection ? (
+                  <details className="turna-process-card turna-collapse-card">
+                    <summary>Paketle gelen ek tercihler</summary>
+                    <div className="turna-collapse-body">
+                      <div className="turna-field-grid">
+                        {showSeatPreference ? (
+                          <label className="turna-field">
+                            <span>Koltuk tercihi</span>
+                            <select
+                              onChange={(event) => updateSpecialRequestField("seat_preference", event.target.value)}
+                              value={specialRequests.seat_preference}
+                            >
+                              <option value="">Secilmedi</option>
+                              <option value="Koridor">Koridor</option>
+                              <option value="Cam kenari">Cam kenari</option>
+                              <option value="On siralar">On siralar</option>
+                            </select>
+                          </label>
+                        ) : null}
+
+                        {showMealPreference ? (
+                          <label className="turna-field">
+                            <span>Yemek tercihi</span>
+                            <select
+                              onChange={(event) => updateSpecialRequestField("meal_preference", event.target.value)}
+                              value={specialRequests.meal_preference}
+                            >
+                              <option value="">Secilmedi</option>
+                              <option value="Standart">Standart</option>
+                              <option value="Vejetaryen">Vejetaryen</option>
+                              <option value="Cocuk menusu">Cocuk menusu</option>
+                            </select>
+                          </label>
+                        ) : null}
+                      </div>
 
                       <label className="turna-field">
-                        <span>Yemek tercihi</span>
-                        <select
-                          onChange={(event) => updateSpecialRequestField("meal_preference", event.target.value)}
-                          value={specialRequests.meal_preference}
-                        >
-                          <option value="">Secilmedi</option>
-                          <option value="Standart">Standart</option>
-                          <option value="Vejetaryen">Vejetaryen</option>
-                          <option value="Cocuk menusu">Cocuk menusu</option>
-                        </select>
+                        <span>Ek destek notu</span>
+                        <textarea
+                          onChange={(event) => updateSpecialRequestField("accessibility_note", event.target.value)}
+                          placeholder="Varsa operasyon ekibine iletilecek ek notunuzu yazin."
+                          rows={3}
+                          value={specialRequests.accessibility_note}
+                        />
                       </label>
                     </div>
-
-                    <label className="turna-field">
-                      <span>Erisilebilirlik veya destek notu</span>
-                      <textarea
-                        onChange={(event) => updateSpecialRequestField("accessibility_note", event.target.value)}
-                        placeholder="Tekerlekli sandalye, yardim ihtiyaci, oncelikli destek..."
-                        rows={3}
-                        value={specialRequests.accessibility_note}
-                      />
-                    </label>
-                  </div>
-                </details>
+                  </details>
+                ) : null}
 
                 <details className="turna-process-card turna-collapse-card">
                   <summary>Fatura bilgileri</summary>
