@@ -27,13 +27,18 @@ async def create_booking_confirmation(payload: dict) -> dict:
 async def list_notifications(
     booking_reference: str | None = Query(default=None),
     user_id: str | None = Query(default=None),
+    recipient_email: str | None = Query(default=None),
 ) -> dict:
     target_url = f"{settings.notification_service_base_url}{settings.api_prefix}/notifications/"
 
     async with httpx.AsyncClient(timeout=20.0) as client:
         response = await client.get(
             target_url,
-            params={"booking_reference": booking_reference, "user_id": user_id},
+            params={
+                "booking_reference": booking_reference,
+                "user_id": user_id,
+                "recipient_email": recipient_email,
+            },
         )
 
     if response.status_code >= 400:

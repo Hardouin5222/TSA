@@ -8,6 +8,7 @@ import { apiRequest } from "@/lib/api";
 import { clearSession, getSession, type StoredSession } from "@/lib/auth";
 import { ShieldIcon, SparkIcon } from "@/components/ui/icons";
 import type { BookingListEnvelope } from "@/types/booking";
+import type { NotificationListEnvelope } from "@/types/notification";
 
 type ProfileEnvelope = {
   success: boolean;
@@ -29,6 +30,7 @@ export function AccountPanel() {
   const [session, setSession] = useState<StoredSession | null>(null);
   const [profileState, setProfileState] = useState<ProfileEnvelope["data"] | null>(null);
   const [bookings, setBookings] = useState<BookingListEnvelope["data"]["bookings"]>([]);
+  const [notifications, setNotifications] = useState<NotificationListEnvelope["data"]["notifications"]>([]);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -58,6 +60,16 @@ export function AccountPanel() {
       .catch((requestError) => {
         setError(requestError instanceof Error ? requestError.message : "Booking list loading failed");
       });
+
+    apiRequest<NotificationListEnvelope>(`/api/notifications?user_id=${storedSession.user.id}`, {
+      token: storedSession.tokens.access_token,
+    })
+      .then((payload) => {
+        setNotifications(payload.data.notifications);
+      })
+      .catch((requestError) => {
+        setError(requestError instanceof Error ? requestError.message : "Notification list loading failed");
+      });
   }, []);
 
   function handleLogout() {
@@ -85,6 +97,10 @@ export function AccountPanel() {
   }
 
   const displayUser = profileState || session.user;
+
+  function getNotificationForBooking(bookingReference: string) {
+    return notifications.find((item) => item.booking_reference === bookingReference) || null;
+  }
 
   return (
     <div className="account-layout">
@@ -141,6 +157,14 @@ export function AccountPanel() {
                   <div>
                     <span className="field-caption">Urun</span>
                     <strong>{booking.item_count}</strong>
+                  </div>
+                  <div>
+                    <span className="field-caption">Bildirim</span>
+                    <strong>{getNotificationForBooking(booking.booking_reference)?.status || "hazir degil"}</strong>
+                  </div>
+                  <div>
+                    <span className="field-caption">Kanal</span>
+                    <strong>{getNotificationForBooking(booking.booking_reference)?.channel || "-"}</strong>
                   </div>
                 </div>
                 <div className="auth-cta-row">

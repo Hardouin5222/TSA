@@ -60,6 +60,7 @@ def create_booking_confirmation_notification(
 def list_notifications(
     booking_reference: str | None,
     user_id: str | None,
+    recipient_email: str | None,
     db: Session,
 ) -> NotificationListResponse:
     query = select(Notification).order_by(Notification.created_at.desc())
@@ -67,6 +68,8 @@ def list_notifications(
         query = query.where(Notification.booking_reference == booking_reference)
     if user_id:
         query = query.where(Notification.user_id == user_id)
+    if recipient_email:
+        query = query.where(Notification.recipient_email == recipient_email)
 
     notifications = db.scalars(query).all()
     return NotificationListResponse(

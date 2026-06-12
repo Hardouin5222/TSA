@@ -26,10 +26,17 @@ async def create_booking_confirmation(payload: CreateBookingConfirmationNotifica
 async def get_notifications(
     booking_reference: str | None = Query(default=None),
     user_id: str | None = Query(default=None),
+    recipient_email: str | None = Query(default=None),
     db: Session = Depends(get_db_session),
 ) -> dict:
-    result = list_notifications(booking_reference=booking_reference, user_id=user_id, db=db)
+    result = list_notifications(
+        booking_reference=booking_reference,
+        user_id=user_id,
+        recipient_email=recipient_email,
+        db=db,
+    )
     return success_response(result.model_dump(), message="Notifications fetched successfully")
+
 
 @router.post("/claim-guest")
 async def claim_guest_notifications_route(payload: ClaimGuestNotificationRequest, db: DbSession) -> dict:
