@@ -7,6 +7,11 @@ router = APIRouter(prefix="/cart", tags=["cart"])
 settings = get_gateway_settings()
 
 
+def _raise_cart_error(response: httpx.Response) -> None:
+    detail = response.json().get("detail", "Cart service request failed")
+    raise HTTPException(status_code=response.status_code, detail=detail)
+
+
 @router.post("/items/flight")
 async def add_flight_to_cart(payload: dict, authorization: str | None = Header(default=None)) -> dict:
     target_url = f"{settings.cart_service_base_url}{settings.api_prefix}/cart/items/flight"
@@ -18,7 +23,7 @@ async def add_flight_to_cart(payload: dict, authorization: str | None = Header(d
         response = await client.post(target_url, json=payload, headers=headers)
 
     if response.status_code >= 400:
-        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="Cart service request failed")
+        _raise_cart_error(response)
 
     return response.json()
 
@@ -41,7 +46,7 @@ async def get_current_cart(
         )
 
     if response.status_code >= 400:
-        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="Cart service request failed")
+        _raise_cart_error(response)
 
     return response.json()
 
@@ -57,6 +62,6 @@ async def claim_guest_cart(payload: dict, authorization: str | None = Header(def
         response = await client.post(target_url, json=payload, headers=headers)
 
     if response.status_code >= 400:
-        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="Cart service request failed")
+        _raise_cart_error(response)
 
     return response.json()

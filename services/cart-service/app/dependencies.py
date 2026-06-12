@@ -17,13 +17,13 @@ def get_optional_user_id(authorization: Annotated[str | None, Header()] = None) 
         return None
 
     if not authorization.startswith("Bearer "):
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid authorization header")
+        return None
 
     token = authorization.removeprefix("Bearer ").strip()
 
     try:
         payload = jwt.decode(token, settings.jwt_secret_key, algorithms=[settings.jwt_algorithm])
-    except jwt.InvalidTokenError as exc:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid access token") from exc
+    except jwt.InvalidTokenError:
+        return None
 
     return str(payload.get("sub")) if payload.get("sub") else None
