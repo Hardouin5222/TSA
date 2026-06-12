@@ -6,6 +6,7 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 import { apiRequest } from "@/lib/api";
 import { getSession } from "@/lib/auth";
 import { getOrCreateGuestSessionId } from "@/lib/guest-session";
+import { getProductSummary } from "@/lib/product-summary";
 import type { CartEnvelope } from "@/types/cart";
 import type { PaymentIntentEnvelope } from "@/types/payment";
 
@@ -34,19 +35,6 @@ type BillingForm = {
   tax_number: string;
 };
 
-type FlightItemSnapshot = {
-  airline_name: string;
-  origin: string;
-  destination: string;
-  departure_at: string;
-  arrival_at: string;
-  fare_family: string;
-  baggage_summary: string;
-  provider: string;
-  duration_minutes: number;
-  selected_fare_option_id: string | null;
-};
-
 type FareOptionSnapshot = {
   id: string;
   label: string;
@@ -54,46 +42,9 @@ type FareOptionSnapshot = {
   meal_included: boolean;
 };
 
-function formatTime(value: string | undefined) {
-  if (!value) {
-    return "--:--";
-  }
-
-  return new Intl.DateTimeFormat("tr-TR", {
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(new Date(value));
-}
-
 function readString(payload: Record<string, unknown>, key: string, fallback = "") {
   const value = payload[key];
   return typeof value === "string" ? value : fallback;
-}
-
-function readNumber(payload: Record<string, unknown>, key: string, fallback = 0) {
-  const value = payload[key];
-  return typeof value === "number" ? value : fallback;
-}
-
-function extractFlightSnapshot(item: CartEnvelope["data"]["items"][number] | null): FlightItemSnapshot | null {
-  if (!item) {
-    return null;
-  }
-
-  const payload = item.item_payload;
-  return {
-    airline_name: readString(payload, "airline_name", item.title),
-    origin: readString(payload, "origin"),
-    destination: readString(payload, "destination"),
-    departure_at: readString(payload, "departure_at"),
-    arrival_at: readString(payload, "arrival_at"),
-    fare_family: readString(payload, "fare_family"),
-    baggage_summary: readString(payload, "baggage_summary"),
-    provider: readString(payload, "provider"),
-    duration_minutes: readNumber(payload, "duration_minutes"),
-    selected_fare_option_id:
-      typeof payload.selected_fare_option_id === "string" ? payload.selected_fare_option_id : null,
-  };
 }
 
 function extractSelectedFareOption(item: CartEnvelope["data"]["items"][number] | null): FareOptionSnapshot | null {
@@ -230,7 +181,7 @@ export function CartPageContent() {
   }, [contact, travelers, billingDetails]);
 
   const primaryItem = cart?.items[0] ?? null;
-  const flightSnapshot = extractFlightSnapshot(primaryItem);
+  const productSummary = getProductSummary(primaryItem);
   const selectedFareOption = extractSelectedFareOption(primaryItem);
   const showSeatPreference = Boolean(selectedFareOption?.seat_selection);
   const showMealPreference = Boolean(selectedFareOption?.meal_included);
@@ -392,21 +343,19 @@ export function CartPageContent() {
                   </Link>
                 </div>
 
-                {flightSnapshot ? (
+                {productSummary ? (
                   <div className="turna-package-summary-row">
                     <div className="turna-package-chip">
-                      <span>Paket Secimi</span>
-                      <strong>{flightSnapshot.fare_family || "Standart paket"}</strong>
+                      <span>Secim</span>
+                      <strong>{productSummary.title}</strong>
                     </div>
                     <div className="turna-package-chip">
-                      <span>Hava yolu</span>
-                      <strong>{flightSnapshot.airline_name}</strong>
+                      <span>Alt baslik</span>
+                      <strong>{productSummary.subtitle || "-"}</strong>
                     </div>
                     <div className="turna-package-chip">
-                      <span>Hat</span>
-                      <strong>
-                        {flightSnapshot.origin} - {flightSnapshot.destination}
-                      </strong>
+                      <span>Urun tipi</span>
+                      <strong>{primaryItem?.item_type || "-"}</strong>
                     </div>
                   </div>
                 ) : null}
@@ -488,19 +437,23 @@ export function CartPageContent() {
 
                 <section className="turna-process-card">
                   <div className="turna-section-title">
-                    <strong>Bagaj</strong>
-                    <span>Secilen paket kapsaminda dahil olan alanlar.</span>
+                    <strong>{primaryItem?.item_type === "flight" ? "Bagaj" : "Secili urun"}</strong>
+                    <span>
+                      {primaryItem?.item_type === "flight"
+                        ? "Secilen paket kapsaminda dahil olan alanlar."
+                        : "Secilen urunun ozet bilgilerini burada tutuyoruz."}
+                    </span>
                   </div>
 
                   <div className="turna-baggage-grid">
                     <div className="turna-baggage-card">
-                      <strong>Kabin bagaji</strong>
-                      <span>{flightSnapshot?.baggage_summary.split("+")[0]?.trim() || "8 kg kabin"}</span>
+                      <strong>{productSummary?.meta[0]?.label || "Detay 1"}</strong>
+                      <span>{productSummary?.meta[0]?.value || "-"}</span>
                       <em>Dahil</em>
                     </div>
                     <div className="turna-baggage-card">
-                      <strong>Check-in bagaji</strong>
-                      <span>{flightSnapshot?.baggage_summary.split("+")[1]?.trim() || "Bagaj yok"}</span>
+                      <strong>{productSummary?.meta[1]?.label || "Detay 2"}</strong>
+                      <span>{productSummary?.meta[1]?.value || "-"}</span>
                       <em>Dahil</em>
                     </div>
                   </div>
@@ -705,26 +658,37 @@ export function CartPageContent() {
                   <strong>Gidis</strong>
                 </div>
 
-                {flightSnapshot ? (
+                {productSummary?.timeline ? (
                   <div className="turna-itinerary-block">
                     <div className="turna-itinerary-row">
                       <div>
-                        <strong>{formatTime(flightSnapshot.departure_at)}</strong>
-                        <span>{flightSnapshot.origin}</span>
+                        <strong>{productSummary.timeline.leftTime}</strong>
+                        <span>{productSummary.timeline.leftLabel}</span>
                       </div>
                       <div className="turna-itinerary-middle">
-                        <span>{flightSnapshot.duration_minutes} dk</span>
-                        <p>{flightSnapshot.provider}</p>
+                        <span>{productSummary.timeline.middleLabel}</span>
+                        <p>{productSummary.timeline.middleSubLabel}</p>
                       </div>
                       <div>
-                        <strong>{formatTime(flightSnapshot.arrival_at)}</strong>
-                        <span>{flightSnapshot.destination}</span>
+                        <strong>{productSummary.timeline.rightTime}</strong>
+                        <span>{productSummary.timeline.rightLabel}</span>
                       </div>
                     </div>
 
                     <div className="turna-summary-meta">
-                      <span>{flightSnapshot.airline_name}</span>
-                      <span>{flightSnapshot.fare_family || "Paket secimi"}</span>
+                      <span>{productSummary.title}</span>
+                      <span>{productSummary.subtitle}</span>
+                    </div>
+                  </div>
+                ) : productSummary ? (
+                  <div className="turna-inline-grid">
+                    <div>
+                      <span>Urun</span>
+                      <strong>{productSummary.title}</strong>
+                    </div>
+                    <div>
+                      <span>Detay</span>
+                      <strong>{productSummary.subtitle || "-"}</strong>
                     </div>
                   </div>
                 ) : null}
@@ -737,16 +701,16 @@ export function CartPageContent() {
 
                 <div className="turna-summary-list">
                   <div>
-                    <span>Biletler ({travelers.length} yolcu)</span>
+                    <span>Urunler ({travelers.length} yolcu)</span>
                     <strong>{formatPrice(cart.total_amount, cart.currency)}</strong>
                   </div>
                   <div>
-                    <span>Bagaj</span>
-                    <strong>Dahil</strong>
+                    <span>{productSummary?.meta[0]?.label || "Detay"}</span>
+                    <strong>{productSummary?.meta[0]?.value || "-"}</strong>
                   </div>
                   <div>
-                    <span>Gidis ucus paketi</span>
-                    <strong>{flightSnapshot?.fare_family || "-"}</strong>
+                    <span>Secili urun</span>
+                    <strong>{productSummary?.title || "-"}</strong>
                   </div>
                   <div>
                     <span>Toplam</span>

@@ -4,7 +4,13 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models import Cart, CartItem
-from app.schemas import AddFlightToCartRequest, CartItemResponse, CartResponse, ClaimGuestCartRequest
+from app.schemas import (
+    AddFlightToCartRequest,
+    AddGenericItemToCartRequest,
+    CartItemResponse,
+    CartResponse,
+    ClaimGuestCartRequest,
+)
 
 
 def add_flight_to_cart(payload: AddFlightToCartRequest, db: Session, user_id: str | None) -> CartResponse:
@@ -35,6 +41,46 @@ def add_flight_to_cart(payload: AddFlightToCartRequest, db: Session, user_id: st
                 unit_price=payload.offer.price_amount,
                 currency=payload.offer.price_currency,
                 title=title,
+            )
+        )
+
+    db.commit()
+    db.refresh(cart)
+    return get_current_cart(db, user_id=user_id, guest_session_id=payload.guest_session_id)
+
+
+def add_generic_item_to_cart(
+    payload: AddGenericItemToCartRequest,
+    db: Session,
+    user_id: str | None,
+) -> CartResponse:
+    cart = _get_or_create_open_cart(db, user_id=user_id, guest_session_id=payload.guest_session_id)
+
+    existing_item = db.scalar(
+        select(CartItem).where(
+            CartItem.cart_id == cart.id,
+            CartItem.item_type == payload.item_type,
+            CartItem.reference_id == payload.reference_id,
+        )
+    )
+
+    if existing_item:
+        existing_item.item_payload = payload.item_payload
+        existing_item.unit_price = payload.unit_price
+        existing_item.title = payload.title
+        existing_item.currency = payload.currency
+        existing_item.quantity = payload.quantity
+    else:
+        db.add(
+            CartItem(
+                cart_id=cart.id,
+                item_type=payload.item_type,
+                reference_id=payload.reference_id,
+                item_payload=payload.item_payload,
+                quantity=payload.quantity,
+                unit_price=payload.unit_price,
+                currency=payload.currency,
+                title=payload.title,
             )
         )
 

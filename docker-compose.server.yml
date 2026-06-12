@@ -97,6 +97,8 @@ services:
       APP_ENV: production
       USER_SERVICE_BASE_URL: http://user-service:8001
       FLIGHT_SERVICE_BASE_URL: http://flight-service:8002
+      HOTEL_SERVICE_BASE_URL: http://hotel-service:8007
+      CAR_RENTAL_SERVICE_BASE_URL: http://car-rental-service:8008
       CART_SERVICE_BASE_URL: http://cart-service:8003
       PAYMENT_SERVICE_BASE_URL: http://payment-service:8004
       BOOKING_SERVICE_BASE_URL: http://booking-service:8005
@@ -114,6 +116,10 @@ services:
       cart-service:
         condition: service_started
       flight-service:
+        condition: service_started
+      hotel-service:
+        condition: service_started
+      car-rental-service:
         condition: service_started
       payment-service:
         condition: service_started
@@ -159,6 +165,54 @@ services:
       APP_ENV: production
       DATABASE_URL: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       REDIS_URL: redis://redis:6379/3
+      RABBITMQ_URL: amqp://${RABBITMQ_DEFAULT_USER}:${RABBITMQ_DEFAULT_PASS}@rabbitmq:5672/
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    restart: unless-stopped
+
+  hotel-service:
+    build:
+      context: .
+      dockerfile: services/hotel-service/Dockerfile
+    container_name: tsa-hotel-service
+    env_file:
+      - .env
+    environment:
+      SERVICE_NAME: hotel-service
+      SERVICE_PORT: 8007
+      APP_ENV: production
+      HOTEL_DATA_MODE: ${HOTEL_DATA_MODE:-mock_supplier}
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      REDIS_URL: redis://redis:6379/7
+      RABBITMQ_URL: amqp://${RABBITMQ_DEFAULT_USER}:${RABBITMQ_DEFAULT_PASS}@rabbitmq:5672/
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    restart: unless-stopped
+
+  car-rental-service:
+    build:
+      context: .
+      dockerfile: services/car-rental-service/Dockerfile
+    container_name: tsa-car-rental-service
+    env_file:
+      - .env
+    environment:
+      SERVICE_NAME: car-rental-service
+      SERVICE_PORT: 8008
+      APP_ENV: production
+      CAR_DATA_MODE: ${CAR_DATA_MODE:-mock_supplier}
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      REDIS_URL: redis://redis:6379/8
       RABBITMQ_URL: amqp://${RABBITMQ_DEFAULT_USER}:${RABBITMQ_DEFAULT_PASS}@rabbitmq:5672/
     depends_on:
       postgres:

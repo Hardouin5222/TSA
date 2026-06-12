@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 
 import { apiRequest } from "@/lib/api";
 import { getSession } from "@/lib/auth";
+import { getProductSummary } from "@/lib/product-summary";
 import type { BookingEnvelope } from "@/types/booking";
 import type { PaymentIntentEnvelope } from "@/types/payment";
 
@@ -56,27 +57,6 @@ function formatPrice(value: number, currency: string) {
   }).format(value);
 }
 
-function readString(payload: Record<string, unknown>, key: string, fallback = "") {
-  const value = payload[key];
-  return typeof value === "string" ? value : fallback;
-}
-
-function readNumber(payload: Record<string, unknown>, key: string, fallback = 0) {
-  const value = payload[key];
-  return typeof value === "number" ? value : fallback;
-}
-
-function formatTime(value: string | undefined) {
-  if (!value) {
-    return "--:--";
-  }
-
-  return new Intl.DateTimeFormat("tr-TR", {
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(new Date(value));
-}
-
 export function MockCheckoutContent({
   providerReference,
   intent,
@@ -91,7 +71,7 @@ export function MockCheckoutContent({
   const [isProcessing, setIsProcessing] = useState(false);
 
   const primaryItem = confirmedIntent.items[0];
-  const payload = primaryItem?.item_payload ?? {};
+  const productSummary = getProductSummary(primaryItem ?? null);
   const totalPrice = useMemo(
     () => confirmedIntent.items.reduce((sum, item) => sum + item.unit_price * item.quantity, 0),
     [confirmedIntent.items],
@@ -283,27 +263,40 @@ export function MockCheckoutContent({
                 <strong>Gidis</strong>
               </div>
 
-              <div className="turna-itinerary-block">
-                <div className="turna-itinerary-row">
-                  <div>
-                    <strong>{formatTime(readString(payload, "departure_at"))}</strong>
-                    <span>{readString(payload, "origin") || "---"}</span>
+              {productSummary?.timeline ? (
+                <div className="turna-itinerary-block">
+                  <div className="turna-itinerary-row">
+                    <div>
+                      <strong>{productSummary.timeline.leftTime}</strong>
+                      <span>{productSummary.timeline.leftLabel}</span>
+                    </div>
+                    <div className="turna-itinerary-middle">
+                      <span>{productSummary.timeline.middleLabel}</span>
+                      <p>{productSummary.timeline.middleSubLabel}</p>
+                    </div>
+                    <div>
+                      <strong>{productSummary.timeline.rightTime}</strong>
+                      <span>{productSummary.timeline.rightLabel}</span>
+                    </div>
                   </div>
-                  <div className="turna-itinerary-middle">
-                    <span>{readNumber(payload, "duration_minutes")} dk</span>
-                    <p>{readString(payload, "provider", confirmedIntent.provider)}</p>
-                  </div>
-                  <div>
-                    <strong>{formatTime(readString(payload, "arrival_at"))}</strong>
-                    <span>{readString(payload, "destination") || "---"}</span>
-                  </div>
-                </div>
 
-                <div className="turna-summary-meta">
-                  <span>{readString(payload, "airline_name", primaryItem?.title || confirmedIntent.provider)}</span>
-                  <span>{readString(payload, "fare_family", "-")}</span>
+                  <div className="turna-summary-meta">
+                    <span>{productSummary.title}</span>
+                    <span>{productSummary.subtitle}</span>
+                  </div>
                 </div>
-              </div>
+              ) : productSummary ? (
+                <div className="turna-inline-grid">
+                  <div>
+                    <span>Urun</span>
+                    <strong>{productSummary.title}</strong>
+                  </div>
+                  <div>
+                    <span>Detay</span>
+                    <strong>{productSummary.subtitle || "-"}</strong>
+                  </div>
+                </div>
+              ) : null}
             </section>
 
             <section className="turna-summary-card">
@@ -313,16 +306,16 @@ export function MockCheckoutContent({
 
               <div className="turna-summary-list">
                 <div>
-                  <span>Biletler ({confirmedIntent.travelers.length} yolcu)</span>
+                  <span>Urunler ({confirmedIntent.travelers.length} yolcu)</span>
                   <strong>{formatPrice(totalPrice, confirmedIntent.currency)}</strong>
                 </div>
                 <div>
-                  <span>Bagaj</span>
-                  <strong>{readString(payload, "baggage_summary", "Dahil")}</strong>
+                  <span>{productSummary?.meta[0]?.label || "Detay"}</span>
+                  <strong>{productSummary?.meta[0]?.value || "-"}</strong>
                 </div>
                 <div>
-                  <span>Paket</span>
-                  <strong>{readString(payload, "fare_family", "-")}</strong>
+                  <span>Secili urun</span>
+                  <strong>{productSummary?.title || "-"}</strong>
                 </div>
                 <div>
                   <span>Toplam</span>

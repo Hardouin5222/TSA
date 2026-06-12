@@ -43,6 +43,17 @@ class AddFlightToCartRequest(BaseModel):
     guest_session_id: str | None = Field(default=None, max_length=100)
 
 
+class AddGenericItemToCartRequest(BaseModel):
+    item_type: str = Field(min_length=1, max_length=30)
+    reference_id: str = Field(min_length=1, max_length=100)
+    title: str = Field(min_length=1)
+    quantity: int = Field(default=1, ge=1)
+    unit_price: float = Field(gt=0)
+    currency: str = Field(min_length=1, max_length=10)
+    item_payload: dict
+    guest_session_id: str | None = Field(default=None, max_length=100)
+
+
 class ClaimGuestCartRequest(BaseModel):
     guest_session_id: str = Field(min_length=1, max_length=100)
     user_id: str = Field(min_length=1, max_length=100)

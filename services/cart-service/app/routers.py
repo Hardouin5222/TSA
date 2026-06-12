@@ -3,8 +3,8 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Query
 
 from app.dependencies import DbSession, get_optional_user_id
-from app.schemas import AddFlightToCartRequest, ClaimGuestCartRequest
-from app.service import add_flight_to_cart, claim_guest_cart, get_current_cart
+from app.schemas import AddFlightToCartRequest, AddGenericItemToCartRequest, ClaimGuestCartRequest
+from app.service import add_flight_to_cart, add_generic_item_to_cart, claim_guest_cart, get_current_cart
 from travel_shared.responses import success_response
 
 router = APIRouter(prefix="/cart", tags=["cart"])
@@ -18,6 +18,26 @@ async def add_flight_item(
 ) -> dict:
     result = add_flight_to_cart(payload, db, user_id)
     return success_response(result.model_dump(), message="Flight offer added to cart")
+
+
+@router.post("/items/hotel")
+async def add_hotel_item(
+    payload: AddGenericItemToCartRequest,
+    db: DbSession,
+    user_id: Annotated[str | None, Depends(get_optional_user_id)],
+) -> dict:
+    result = add_generic_item_to_cart(payload, db, user_id)
+    return success_response(result.model_dump(), message="Hotel offer added to cart")
+
+
+@router.post("/items/car")
+async def add_car_item(
+    payload: AddGenericItemToCartRequest,
+    db: DbSession,
+    user_id: Annotated[str | None, Depends(get_optional_user_id)],
+) -> dict:
+    result = add_generic_item_to_cart(payload, db, user_id)
+    return success_response(result.model_dump(), message="Car rental offer added to cart")
 
 
 @router.get("/current")
