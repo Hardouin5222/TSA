@@ -193,6 +193,7 @@ export function CartPageContent() {
 
   const primaryItem = cart?.items[0] ?? null;
   const productSummary = getProductSummary(primaryItem);
+  const includedSummaryItems = (productSummary?.meta ?? []).filter((entry) => entry.value && entry.value !== "-");
   const selectedFareOption = extractSelectedFareOption(primaryItem);
   const flightCapabilities =
     primaryItem && primaryItem.item_type === "flight" ? getFlightCapabilitySummary(primaryItem.item_payload) : null;
@@ -201,6 +202,7 @@ export function CartPageContent() {
   const showMealPreference = Boolean(flightCapabilities?.mealSelectionSupported && fareOptionFlags.mealSelection);
   const showTravelerNote = Boolean(flightCapabilities?.travelerNoteSupported);
   const showSpecialRequestsSection = showSeatPreference || showMealPreference || showTravelerNote;
+  const showInsuranceOffer = false;
 
   function updateContactField(name: keyof typeof contact, value: string) {
     setContact((current) => ({ ...current, [name]: value }));
@@ -361,16 +363,16 @@ export function CartPageContent() {
                 {productSummary ? (
                   <div className="turna-package-summary-row">
                     <div className="turna-package-chip">
-                      <span>Secim</span>
+                      <span>Paket Secimi</span>
+                      <strong>{productSummary.meta[0]?.value || productSummary.title}</strong>
+                    </div>
+                    <div className="turna-package-chip">
+                      <span>Hava yolu</span>
                       <strong>{productSummary.title}</strong>
                     </div>
                     <div className="turna-package-chip">
-                      <span>Alt baslik</span>
+                      <span>Hat</span>
                       <strong>{productSummary.subtitle || "-"}</strong>
-                    </div>
-                    <div className="turna-package-chip">
-                      <span>Urun tipi</span>
-                      <strong>{primaryItem?.item_type || "-"}</strong>
                     </div>
                   </div>
                 ) : null}
@@ -461,16 +463,13 @@ export function CartPageContent() {
                   </div>
 
                   <div className="turna-baggage-grid">
-                    <div className="turna-baggage-card">
-                      <strong>{productSummary?.meta[0]?.label || "Detay 1"}</strong>
-                      <span>{productSummary?.meta[0]?.value || "-"}</span>
-                      <em>Dahil</em>
-                    </div>
-                    <div className="turna-baggage-card">
-                      <strong>{productSummary?.meta[1]?.label || "Detay 2"}</strong>
-                      <span>{productSummary?.meta[1]?.value || "-"}</span>
-                      <em>Dahil</em>
-                    </div>
+                    {(includedSummaryItems.length > 0 ? includedSummaryItems : [{ label: "Detay", value: "-" }]).map((entry) => (
+                      <div className="turna-baggage-card" key={`${entry.label}-${entry.value}`}>
+                        <strong>{entry.label}</strong>
+                        <span>{entry.value}</span>
+                        <em>Dahil</em>
+                      </div>
+                    ))}
                   </div>
                 </section>
 
@@ -511,28 +510,30 @@ export function CartPageContent() {
                   </label>
                 </section>
 
-                <section className="turna-process-card turna-insurance-card">
-                  <div className="turna-insurance-head">
-                    <div>
-                      <strong>Biletini korumaya al</strong>
-                      <span>Opsiyonel koruma urunu. Simdilik mock seviye hazirlik olarak duruyor.</span>
+                {showInsuranceOffer ? (
+                  <section className="turna-process-card turna-insurance-card">
+                    <div className="turna-insurance-head">
+                      <div>
+                        <strong>Biletini korumaya al</strong>
+                        <span>Opsiyonel koruma urunu. Sadece gercek tedarik verisi geldiginde gosterilir.</span>
+                      </div>
+
+                      <label className="turna-insurance-toggle">
+                        <span>Onerilen</span>
+                        <input
+                          checked={insuranceSelected}
+                          onChange={() => setInsuranceSelected((current) => !current)}
+                          type="checkbox"
+                        />
+                      </label>
                     </div>
 
-                    <label className="turna-insurance-toggle">
-                      <span>Onerilen</span>
-                      <input
-                        checked={insuranceSelected}
-                        onChange={() => setInsuranceSelected((current) => !current)}
-                        type="checkbox"
-                      />
-                    </label>
-                  </div>
-
-                  <div className="turna-insurance-body">
-                    <p>Bilet tutarinin buyuk kismini iade eden koruma urunlerini bu bolgeye baglayacagiz.</p>
-                    <strong>1 kisi icin hazir fiyat alani</strong>
-                  </div>
-                </section>
+                    <div className="turna-insurance-body">
+                      <p>Bilet tutarinin buyuk kismini iade eden koruma urunlerini bu bolgeye baglayacagiz.</p>
+                      <strong>1 kisi icin hazir fiyat alani</strong>
+                    </div>
+                  </section>
+                ) : null}
 
                 {showSpecialRequestsSection ? (
                   <details className="turna-process-card turna-collapse-card">
@@ -761,19 +762,25 @@ export function CartPageContent() {
                   </div>
                 )}
 
-                <button
-                  className="turna-primary-button"
-                  disabled={isCreatingIntent || !isCheckoutReady}
-                  onClick={handleCreatePaymentIntent}
-                  type="button"
-                >
-                  {isCreatingIntent ? "Hazirlaniyor..." : "Odeme adimina gec"}
-                </button>
+                {paymentIntent ? (
+                  <Link className="turna-primary-button" href={paymentIntent.checkout_url}>
+                    Odeme ekranina gec
+                  </Link>
+                ) : (
+                  <button
+                    className="turna-primary-button"
+                    disabled={isCreatingIntent || !isCheckoutReady}
+                    onClick={handleCreatePaymentIntent}
+                    type="button"
+                  >
+                    {isCreatingIntent ? "Hazirlaniyor..." : "Odeme adimina gec"}
+                  </button>
+                )}
 
                 {paymentIntent ? (
-                  <Link className="turna-secondary-button" href={paymentIntent.checkout_url}>
-                    Mock checkout ekranina git
-                  </Link>
+                  <button className="turna-secondary-button" onClick={handleCreatePaymentIntent} type="button">
+                    Intent verisini guncelle
+                  </button>
                 ) : null}
               </section>
             </aside>
