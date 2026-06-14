@@ -1,0 +1,5 @@
+/.idea/*
+!.idea/codeStyles/*
+/.fleet
+/.vscode
+/.idea
