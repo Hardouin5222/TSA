@@ -16,13 +16,18 @@ function formatPrice(value: number, currency: string) {
 }
 
 function formatDate(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return "-";
+  }
+
   return new Intl.DateTimeFormat("tr-TR", {
     day: "2-digit",
     month: "long",
     year: "numeric",
     hour: "2-digit",
     minute: "2-digit",
-  }).format(new Date(value));
+  }).format(date);
 }
 
 export function BookingDetailContent({

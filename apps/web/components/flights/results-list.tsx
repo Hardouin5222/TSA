@@ -12,6 +12,9 @@ import type { FlightOffer, FlightSearchEnvelope } from "@/types/flights";
 
 function formatTime(value: string) {
   const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return "--:--";
+  }
   return new Intl.DateTimeFormat("tr-TR", {
     hour: "2-digit",
     minute: "2-digit",
@@ -20,6 +23,9 @@ function formatTime(value: string) {
 
 function formatDateLabel(value: string) {
   const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return "--";
+  }
   return new Intl.DateTimeFormat("tr-TR", {
     day: "2-digit",
     month: "short",

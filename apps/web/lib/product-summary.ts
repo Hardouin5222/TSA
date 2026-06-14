@@ -34,10 +34,15 @@ function formatTime(value: string | undefined) {
     return "--:--";
   }
 
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return "--:--";
+  }
+
   return new Intl.DateTimeFormat("tr-TR", {
     hour: "2-digit",
     minute: "2-digit",
-  }).format(new Date(value));
+  }).format(date);
 }
 
 export function getProductSummary(item: GenericCartItem | null): ProductSummary | null {
