@@ -80,6 +80,7 @@ class ProcessSupplierTicketing implements ShouldQueue
                 $supplierBooking->supplier_booking_reference = $response['supplier_booking_reference'] ?? null;
                 $supplierBooking->pnr = $response['pnr'] ?? null;
                 $supplierBooking->ticket_numbers_json = $response['ticket_numbers'] ?? [];
+                $supplierBooking->payment_status = 'payment_paid';
                 $supplierBooking->fulfillment_status = $response['fulfillment_status'] ?? 'booking_confirmed';
                 $supplierBooking->manual_review_required = (bool) ($response['manual_action_required'] ?? false);
                 $supplierBooking->snapshot_json = array_merge($supplierBooking->snapshot_json ?: [], [

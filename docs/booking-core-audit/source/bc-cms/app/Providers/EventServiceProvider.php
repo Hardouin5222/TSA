@@ -20,6 +20,8 @@ use Modules\User\Listeners\SendVendorRegisterdEmail;
 use Modules\Vendor\Events\PayoutRequestEvent;
 use Modules\Vendor\Listeners\PayoutNotifyListener;
 use Modules\Vendor\Listeners\PayoutRequestNotificationListener;
+use Modules\Flight\Events\SupplierPaymentConfirmed;
+use Modules\Flight\Listeners\ProcessSupplierTicketing;
 
 class EventServiceProvider extends ServiceProvider
 {
@@ -36,25 +38,28 @@ class EventServiceProvider extends ServiceProvider
             SendMailUserRegisteredListen::class,
             SendNotifyRegisteredListen::class
         ],
-        VendorApproved::class=>[
+        VendorApproved::class => [
             SendVendorApprovedMail::class,
             SendNotifyApproved::class
         ],
-        NewVendorRegistered::class=>[
+        NewVendorRegistered::class => [
             SendVendorRegisterdEmail::class,
             SendNotifyRegistered::class
         ],
-//        VendorLogPayment::class =>[
-//            VendorLogPaymentListen::class
-//        ]
-        PayoutRequestEvent::class=>[
+        //        VendorLogPayment::class =>[
+        //            VendorLogPaymentListen::class
+        //        ]
+        PayoutRequestEvent::class => [
             PayoutRequestNotificationListener::class,
             PayoutNotifyListener::class
         ],
-        EnquirySendEvent::class=>[
+        EnquirySendEvent::class => [
             EnquirySendListen::class,
             EnquiryNotifyListen::class
-        ]
+        ],
+        SupplierPaymentConfirmed::class => [
+            ProcessSupplierTicketing::class,
+        ],
     ];
 
     /**

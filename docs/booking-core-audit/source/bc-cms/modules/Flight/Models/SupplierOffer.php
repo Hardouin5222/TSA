@@ -123,7 +123,19 @@ class SupplierOffer extends BaseModel
 
     public function afterPaymentProcess($booking, $gateway = null)
     {
-        return app(\Modules\Flight\Services\SupplierFlightService::class)
+        $result = app(\Modules\Flight\Services\SupplierFlightService::class)
             ->afterCheckout($this, request(), $booking);
+
+        event(new \Modules\Flight\Events\SupplierPaymentConfirmed(
+            $booking->id,
+            $booking->gateway ?: 'offline',
+            [
+                'gateway' => $booking->gateway ?: 'offline',
+                'booking_code' => $booking->code,
+                'payment_id' => 'BC-' . $booking->id . '-' . time(),
+            ]
+        ));
+
+        return $result;
     }
 }
