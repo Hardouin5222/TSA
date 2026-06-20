@@ -31,3 +31,13 @@ storage/installed
 public/themes/*/dist
 /.nova
 /.zed
+
+# Local backup files
+*.bak
+*.bak.*
+
+# Laravel runtime/cache
+storage/debugbar/
+storage/framework/cache/
+storage/framework/sessions/
+storage/framework/views/

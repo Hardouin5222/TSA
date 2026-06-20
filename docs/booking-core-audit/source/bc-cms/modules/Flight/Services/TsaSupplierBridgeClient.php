@@ -22,7 +22,7 @@ class TsaSupplierBridgeClient
     public function search(array $criteria): array
     {
         if ($this->isMock()) {
-            return ['offers' => []];
+            return $this->mockSearch($criteria);
         }
 
         return $this->post('/api/flights/search', $criteria);
@@ -98,6 +98,122 @@ class TsaSupplierBridgeClient
     protected function isMock(): bool
     {
         return $this->mode === 'mock' || $this->mode === 'mock_supplier';
+    }
+
+    protected function mockSearch(array $criteria): array
+    {
+        $origin = strtoupper((string) (Arr::get($criteria, 'origin') ?: Arr::get($criteria, 'from_where') ?: 'IST'));
+        $destination = strtoupper((string) (Arr::get($criteria, 'destination') ?: Arr::get($criteria, 'to_where') ?: 'LHR'));
+        $departureDate = Arr::get($criteria, 'departure_date')
+            ?: Arr::get($criteria, 'start_date')
+            ?: Arr::get($criteria, 'start')
+            ?: now()->addDays(14)->toDateString();
+
+        try {
+            $departure = \Carbon\Carbon::parse($departureDate)->setTime(10, 25);
+        } catch (\Throwable $e) {
+            $departure = now()->addDays(14)->setTime(10, 25);
+        }
+
+        $resolver = app(\Modules\Flight\Services\TsaFlightSupplierResolver::class);
+        $routing = $resolver->resolveForQuote([
+            'provider' => 'AMADEUS',
+            'origin' => ['code' => $origin],
+            'destination' => ['code' => $destination],
+            'supplier_context' => ['supplier_code' => 'AMADEUS'],
+        ], [
+            'origin' => $origin,
+            'destination' => $destination,
+        ]);
+
+        $currency = ($routing['market'] ?? 'TR') === 'TR' ? 'TRY' : 'USD';
+        $basePrice = ($routing['market'] ?? 'TR') === 'TR' ? 1180.00 : 233.90;
+
+        $makeOffer = function (int $index, string $airline, string $flightNumber, int $minutes, float $amount) use ($origin, $destination, $departure, $currency, $routing) {
+            $departAt = $departure->copy()->addHours($index * 2);
+            $arriveAt = $departAt->copy()->addMinutes($minutes);
+
+            return [
+                'id' => 'mock_'.$origin.'_'.$destination.'_'.$index,
+                'offer_id' => 'mock_'.$origin.'_'.$destination.'_'.$index,
+                'provider' => 'AMADEUS',
+                'supplier' => 'AMADEUS',
+                'supplier_code' => $routing['search_supplier'] ?? 'AMADEUS',
+                'display_name' => $airline.' '.$flightNumber,
+                'airline' => $airline,
+                'flight_number' => $flightNumber,
+                'origin' => [
+                    'code' => $origin,
+                    'name' => $origin,
+                ],
+                'destination' => [
+                    'code' => $destination,
+                    'name' => $destination,
+                ],
+                'departure_at' => $departAt->toIso8601String(),
+                'arrival_at' => $arriveAt->toIso8601String(),
+                'duration_minutes' => $minutes,
+                'stop_count' => 0,
+                'currency' => $currency,
+                'price' => [
+                    'amount' => $amount,
+                    'currency' => $currency,
+                ],
+                'total_amount' => $amount,
+                'fare_options' => [
+                    [
+                        'id' => 'eco',
+                        'name' => 'Economy',
+                        'price' => $amount,
+                        'total_amount' => $amount,
+                        'currency' => $currency,
+                        'baggage' => 'Cabin baggage',
+                    ],
+                    [
+                        'id' => 'flex',
+                        'name' => 'Economy Flex',
+                        'price' => $amount + 320,
+                        'total_amount' => $amount + 320,
+                        'currency' => $currency,
+                        'baggage' => 'Cabin + checked baggage',
+                    ],
+                ],
+                'baggage' => [
+                    'cabin' => true,
+                    'checked' => false,
+                ],
+                'rules' => [
+                    'refundable' => false,
+                    'exchangeable' => true,
+                ],
+                'capabilities' => [
+                    'branded_fares_supported' => true,
+                    'checked_baggage_supported' => true,
+                    'seat_selection_supported' => false,
+                    'hold_supported' => false,
+                    'instant_ticketing_supported' => true,
+                ],
+                'supplier_context' => array_merge($routing, [
+                    'supplier_code' => $routing['search_supplier'] ?? 'AMADEUS',
+                    'search_supplier' => $routing['search_supplier'] ?? 'AMADEUS',
+                    'ticketing_supplier' => $routing['ticketing_supplier'] ?? 'BILETBANK',
+                    'payment_provider' => $routing['payment_provider'] ?? 'BILETBANK_POS',
+                    'raw_offer_id' => 'mock_'.$origin.'_'.$destination.'_'.$index,
+                    'pricing_token' => 'mock_pricing_'.$origin.'_'.$destination.'_'.$index,
+                    'expires_at' => now()->addMinutes(15)->toIso8601String(),
+                ]),
+            ];
+        };
+
+        return [
+            'search_id' => 'mock_search_'.Str::uuid(),
+            'supplier_code' => $routing['search_supplier'] ?? 'AMADEUS',
+            'market' => $routing['market'] ?? 'TR',
+            'offers' => [
+                $makeOffer(1, $origin === 'IST' ? 'Turkish Airlines' : 'Mock Air', 'TK1981', 245, $basePrice),
+                $makeOffer(2, 'British Airways', 'BA675', 255, $basePrice + 210),
+            ],
+        ];
     }
 
     protected function mockQuote(array $payload): array

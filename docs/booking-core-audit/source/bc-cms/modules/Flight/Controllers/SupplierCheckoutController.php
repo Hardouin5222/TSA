@@ -13,16 +13,19 @@ use Modules\Flight\Models\SupplierOffer;
 use Modules\Flight\Models\SupplierQuote;
 use Modules\Flight\Services\FlightSearchManager;
 use Modules\Flight\Services\TsaSupplierBridgeClient;
+use Modules\Flight\Services\TsaFlightSupplierResolver;
 
 class SupplierCheckoutController extends Controller
 {
     protected FlightSearchManager $searchManager;
     protected TsaSupplierBridgeClient $bridgeClient;
+    protected TsaFlightSupplierResolver $supplierResolver;
 
-    public function __construct(FlightSearchManager $searchManager, TsaSupplierBridgeClient $bridgeClient)
+    public function __construct(FlightSearchManager $searchManager, TsaSupplierBridgeClient $bridgeClient, TsaFlightSupplierResolver $supplierResolver)
     {
         $this->searchManager = $searchManager;
         $this->bridgeClient = $bridgeClient;
+        $this->supplierResolver = $supplierResolver;
     }
 
     public function quote(Request $request)
@@ -63,6 +66,12 @@ class SupplierCheckoutController extends Controller
             'supplier_context' => Arr::get($offer, 'supplier_context', []),
         ];
 
+        $quotePayload = $this->supplierResolver->decorateQuotePayload($quotePayload, $offer, $request->all());
+
+        if (!$this->supplierResolver->canProceedToCheckout($quotePayload)) {
+            return back()->with('error', __('This route is not enabled for online ticketing yet. Our team must confirm it manually.'));
+        }
+
         try {
             $quoteResponse = $this->bridgeClient->quote($quotePayload);
         } catch (\Throwable $e) {
@@ -70,7 +79,7 @@ class SupplierCheckoutController extends Controller
             return back()->with('error', __('We could not confirm this flight price. Please try again.'));
         }
 
-        return DB::transaction(function () use ($request, $offer, $fare, $quoteResponse) {
+        return DB::transaction(function () use ($request, $offer, $fare, $quoteResponse, $quotePayload) {
             $checkoutExpiresAt = now()->addHours(2);
 
             $offerModel = SupplierOffer::create([
@@ -97,7 +106,7 @@ class SupplierCheckoutController extends Controller
                     ?: 0
                 ),
                 'payload_json' => $offer,
-                'supplier_context_json' => Arr::get($offer, 'supplier_context', []),
+                'supplier_context_json' => Arr::get($quotePayload, 'supplier_context', Arr::get($offer, 'supplier_context', [])),
                 'expires_at' => $checkoutExpiresAt,
                 'status' => 'quoted',
             ]);
@@ -131,6 +140,7 @@ class SupplierCheckoutController extends Controller
                 'payload_json' => [
                     'supplier_quote_reference' => $supplierQuoteReference,
                     'quote_response' => $quoteResponse,
+                    'supplier_context' => Arr::get($quotePayload, 'supplier_context', []),
                     'selected_fare' => $fare,
                     'offer_snapshot' => $offer,
                 ],
