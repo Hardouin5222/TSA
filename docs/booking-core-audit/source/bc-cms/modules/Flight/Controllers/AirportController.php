@@ -40,40 +40,59 @@
         }
 
         public function search(Request $request)
-        {
-            $pre_selected = $request->query('pre_selected');
-            $selected = $request->query('selected');
+    {
+        $pre_selected = $request->query('pre_selected');
+        $selected = $request->query('selected');
 
-            if($pre_selected && $selected){
-                $items = $this->airport::find($selected);
+        if ($pre_selected && $selected) {
+            $items = $this->airport::find($selected);
 
-                return [
-                    'results'=>$items
-                ];
-            }
-            $s = $request->query('search');
-            $query = $this->airport::select('id', 'name','code','address','country');
-            if ($s) {
-                $query->where(function($query) use($s){
-                    $query->where('name', 'LIKE', '%'.$s.'%');
-                    $query->orWhere('address', 'LIKE', '%'.$s.'%');
-                    $query->orWhere('code', $s);
-                    $query->orWhere('country', $s);
-                });
-                $query->orderByRaw("
-                    CASE WHEN code = ? then 1
-                    When `name` like '%?%' then 2
-                    When `address` like '%?%' then 3
-                    When `country` = ? then 4
-                    ELSE 5
-                    END ASC
-                ",[$s,$s,$s,$s]);
-            }
-            $res = $query->orderBy('id', 'desc')->limit(20)->get();
             return [
-                'status'=>1,
-                'data'=>AirportResource::collection($res)
+                'results' => $items
             ];
         }
+
+        $s = trim((string) (
+            $request->query('search')
+            ?? $request->query('q')
+            ?? $request->query('term')
+            ?? ''
+        ));
+
+        $query = $this->airport::select('id', 'name', 'code', 'address', 'country');
+
+        if ($s !== '') {
+            $code = strtoupper($s);
+            $like = '%' . $s . '%';
+
+            $query->where(function ($query) use ($s, $code, $like) {
+                $query->where('code', $code)
+                    ->orWhere('code', $s)
+                    ->orWhere('name', 'LIKE', $like)
+                    ->orWhere('address', 'LIKE', $like)
+                    ->orWhere('country', $s)
+                    ->orWhere('country', $code);
+            });
+
+            $query->orderByRaw("
+                CASE
+                    WHEN code = ? THEN 1
+                    WHEN code = ? THEN 1
+                    WHEN name LIKE ? THEN 2
+                    WHEN address LIKE ? THEN 3
+                    WHEN country = ? THEN 4
+                    WHEN country = ? THEN 4
+                    ELSE 5
+                END ASC
+            ", [$code, $s, $like, $like, $s, $code]);
+        }
+
+        $res = $query->orderBy('id', 'desc')->limit(20)->get();
+
+        return [
+            'status' => 1,
+            'data' => AirportResource::collection($res)
+        ];
+    }
 
     }
