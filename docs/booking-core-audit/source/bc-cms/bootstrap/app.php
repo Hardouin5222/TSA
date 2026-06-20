@@ -12,6 +12,9 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware) {
         $middleware->validateCsrfTokens(except: [
+            'flight/supplier/webhooks/payment/*',
+        ]);
+        $middleware->validateCsrfTokens(except: [
             '*/gateway_callback/*',
             '*/callback/*',
             '*/order/confirm/*',
