@@ -52,6 +52,11 @@ class SupplierBookingAdminController extends Controller
     public function retryTicketing(int $id)
     {
         $row = SupplierBooking::with('booking')->findOrFail($id);
+
+        if (in_array($row->fulfillment_status, ['ticket_issued', 'booking_confirmed'], true)) {
+            return back()->with('error', __('This supplier booking is already ticketed or confirmed. Retry is blocked to prevent duplicate ticketing.'));
+        }
+
         if (!$row->booking) {
             return back()->with('error', __('Booking not found'));
         }
@@ -68,6 +73,11 @@ class SupplierBookingAdminController extends Controller
     public function markManualReview(int $id)
     {
         $row = SupplierBooking::findOrFail($id);
+
+        if (in_array($row->fulfillment_status, ['ticket_issued', 'booking_confirmed'], true)) {
+            return back()->with('error', __('This supplier booking is already ticketed or confirmed. Manual review cannot override a completed ticket.'));
+        }
+
         $row->manual_review_required = true;
         $row->fulfillment_status = 'manual_review_required';
         $row->save();
