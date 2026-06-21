@@ -58,7 +58,11 @@ class ProcessSupplierTicketing implements ShouldQueue
         $payload = [
             'quote_id' => $quote->quote_uuid,
             'booking_reference' => $booking->code,
-            'payment_reference' => $event->paymentPayload['payment_id'] ?? $event->paymentPayload['merchant_oid'] ?? null,
+            'payment_reference' => $event->paymentPayload['payment_reference']
+                ?? $event->paymentPayload['payment_code']
+                ?? $event->paymentPayload['payment_id']
+                ?? $event->paymentPayload['merchant_oid']
+                ?? null,
             'selected_fare_id' => $quote->selected_fare_id,
             'travellers' => data_get($supplierBooking->snapshot_json, 'travellers', []),
             'contact' => data_get($supplierBooking->snapshot_json, 'contact', []),

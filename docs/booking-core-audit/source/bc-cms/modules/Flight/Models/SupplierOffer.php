@@ -144,13 +144,25 @@ class SupplierOffer extends BaseModel
             return $result;
         }
 
+        $payment = $booking->payment;
+        $paymentGateway = $payment ? $payment->payment_gateway : ($booking->gateway ?: 'offline');
+        $paymentReference = $payment
+            ? ($payment->code ?: ('PAY-' . $payment->id))
+            : ('BC-' . $booking->id . '-' . time());
+
         event(new \Modules\Flight\Events\SupplierPaymentConfirmed(
             $booking->id,
-            $booking->gateway ?: 'offline',
+            $paymentGateway ?: ($booking->gateway ?: 'offline'),
             [
-                'gateway' => $booking->gateway ?: 'offline',
+                'gateway' => $booking->gateway ?: $paymentGateway ?: 'offline',
                 'booking_code' => $booking->code,
-                'payment_id' => 'BC-' . $booking->id . '-' . time(),
+                'payment_id' => $payment ? $payment->id : null,
+                'payment_code' => $payment ? $payment->code : null,
+                'payment_reference' => $paymentReference,
+                'payment_gateway' => $paymentGateway,
+                'payment_status' => $payment ? $payment->status : $booking->status,
+                'amount' => $payment ? (float) $payment->amount : (float) $booking->paid,
+                'currency' => $payment ? $payment->currency : $booking->currency,
             ]
         ));
 
