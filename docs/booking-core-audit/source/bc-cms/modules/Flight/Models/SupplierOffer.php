@@ -39,6 +39,7 @@ class SupplierOffer extends BaseModel
     public $checkout_form_file = 'Flight::frontend.booking.supplier-flight-checkout-form';
     public $checkout_booking_detail_file = 'Flight::frontend.booking.supplier-flight-booking-detail';
 
+    public $email_new_booking_file = 'Flight::emails.supplier-flight-booking-detail';
     public function quotes(): HasMany
     {
         return $this->hasMany(SupplierQuote::class, 'offer_id');
