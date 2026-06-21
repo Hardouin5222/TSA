@@ -43,7 +43,7 @@ class BookingController extends \App\Http\Controllers\Controller
             if (\request()->isJson()) {
                 return $this->sendError($error)->setStatusCode(401);
             }
-            return redirect(route('login', ['redirect' => \request()->fullUrl()]))->with('error', $error);
+            return redirect(route('login', ['redirect' => \request()->fullUrl()]))->with('error', __('You have to login in to do this'));
         }
 
         $booking = $this->booking::where('code', $code)->first();
@@ -520,7 +520,7 @@ class BookingController extends \App\Http\Controllers\Controller
             if (\request()->isJson()) {
                 return $this->sendError(__("You have to login in to do this"))->setStatusCode(401);
             }
-            return redirect(route('login', ['redirect' => \request()->fullUrl()]))->with('error', $error);
+            return redirect(route('login', ['redirect' => \request()->fullUrl()]))->with('error', __('You have to login in to do this'));
         }
 
         $booking = $this->booking::where('code', $code)->first();
