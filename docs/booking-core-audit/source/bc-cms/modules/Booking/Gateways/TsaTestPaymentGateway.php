@@ -12,8 +12,21 @@ class TsaTestPaymentGateway extends BaseGateway
     public $name = 'TSA Test Payment';
     public $is_offline = false;
 
+    public function isAvailable()
+    {
+        if (app()->environment('production')) {
+            return false;
+        }
+
+        return parent::isAvailable();
+    }
+
     public function process(Request $request, $booking, $service)
     {
+        if (app()->environment('production')) {
+            abort(403, 'TSA Test Payment is disabled in production.');
+        }
+
         $service->beforePaymentProcess($booking, $this);
 
         if ($booking->paid < $booking->total) {
