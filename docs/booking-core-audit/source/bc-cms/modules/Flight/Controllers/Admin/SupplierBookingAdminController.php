@@ -39,7 +39,7 @@ class SupplierBookingAdminController extends Controller
 
     public function detail(int $id)
     {
-        $row = SupplierBooking::with(['booking', 'quote.offer'])->findOrFail($id);
+        $row = SupplierBooking::with(['booking.payment', 'quote.offer'])->findOrFail($id);
         $logs = SupplierOperationLog::where('booking_id', $row->booking_id)->latest()->paginate(30);
 
         return view('Flight::admin.supplier-bookings.detail', [

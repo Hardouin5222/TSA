@@ -59,7 +59,55 @@
 
     <div class="row">
         <div class="col-md-8">
-            <div class="panel">
+            
+        <div class="panel">
+            <div class="panel-title">
+                <strong>{{ __('Payment Transaction') }}</strong>
+            </div>
+            <div class="panel-body">
+                @php
+                    $booking = $row->booking;
+                    $payment = $booking ? $booking->payment : null;
+                    $paymentLogsRaw = $payment ? $payment->logs : null;
+                    $paymentLogsDecoded = is_string($paymentLogsRaw) ? json_decode($paymentLogsRaw, true) : null;
+                @endphp
+
+                @if($payment)
+                    <div class="row">
+                        <div class="col-md-4">
+                            <p><strong>{{ __('Payment ID') }}:</strong> #{{ $payment->id }}</p>
+                            <p><strong>{{ __('Payment Code') }}:</strong> {{ $payment->code ?: '-' }}</p>
+                        </div>
+                        <div class="col-md-4">
+                            <p><strong>{{ __('Gateway') }}:</strong> {{ $payment->payment_gateway ?: '-' }}</p>
+                            <p><strong>{{ __('Status') }}:</strong> <span class="badge badge-success">{{ $payment->status ?: '-' }}</span></p>
+                        </div>
+                        <div class="col-md-4">
+                            <p><strong>{{ __('Amount') }}:</strong> {{ $payment->amount ?: '0' }} {{ $payment->currency ?: '' }}</p>
+                            <p><strong>{{ __('Created At') }}:</strong> {{ $payment->created_at ?: '-' }}</p>
+                        </div>
+                    </div>
+
+                    <hr>
+
+                    <p><strong>{{ __('Gateway Logs / Reference') }}</strong></p>
+
+                    @if(is_array($paymentLogsDecoded))
+                        <pre style="white-space: pre-wrap; background:#f8f9fa; padding:12px; border:1px solid #eee; border-radius:4px;">{{ json_encode($paymentLogsDecoded, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) }}</pre>
+                    @elseif($paymentLogsRaw)
+                        <pre style="white-space: pre-wrap; background:#f8f9fa; padding:12px; border:1px solid #eee; border-radius:4px;">{{ $paymentLogsRaw }}</pre>
+                    @else
+                        <p class="text-muted">{{ __('No payment logs found.') }}</p>
+                    @endif
+                @else
+                    <div class="alert alert-warning mb-0">
+                        {{ __('No payment transaction record is linked to this booking yet.') }}
+                    </div>
+                @endif
+            </div>
+        </div>
+
+<div class="panel">
                 <div class="panel-title"><strong>{{ __('Supplier Ticketing Status') }}</strong></div>
                 <div class="panel-body">
                     <div class="row">
