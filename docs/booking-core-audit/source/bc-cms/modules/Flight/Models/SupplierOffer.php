@@ -3,6 +3,7 @@
 namespace Modules\Flight\Models;
 
 use App\BaseModel;
+use Modules\Booking\Models\Booking;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Modules\Flight\Services\SupplierFlightService;
 
@@ -125,6 +126,22 @@ class SupplierOffer extends BaseModel
     {
         $result = app(\Modules\Flight\Services\SupplierFlightService::class)
             ->afterCheckout($this, request(), $booking);
+
+        // Critical safety rule:
+        // Do not start supplier ticketing before real payment is confirmed.
+        // Offline / processing / unpaid bookings must stay pending.
+        $paidStatuses = [
+            Booking::PAID,
+            Booking::COMPLETED,
+            Booking::CONFIRMED,
+        ];
+
+        if (!in_array($booking->status, $paidStatuses, true)) {
+            $booking->addMeta('tsa_fulfillment_status', 'payment_pending');
+            $booking->save();
+
+            return $result;
+        }
 
         event(new \Modules\Flight\Events\SupplierPaymentConfirmed(
             $booking->id,
