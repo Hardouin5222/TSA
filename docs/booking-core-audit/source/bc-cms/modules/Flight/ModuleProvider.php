@@ -68,6 +68,11 @@ class ModuleProvider extends ModuleServiceProvider
                         'url'        => route('flight.admin.seat_type.index'),
                         'title'      => __('Seat Type'),
                     ],
+                    'supplier_bookings' => [
+                        'url'        => route('flight.admin.supplier-bookings.index'),
+                        'title'      => __('Supplier Bookings'),
+                        'permission' => 'flight_view',
+                    ],
                     'attribute' => [
                         'url'        => route('flight.admin.attribute.index'),
                         'title'      => __('Attributes'),
