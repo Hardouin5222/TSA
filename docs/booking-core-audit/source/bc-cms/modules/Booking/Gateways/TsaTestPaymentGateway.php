@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Modules\Booking\Events\BookingCreatedEvent;
 use Modules\Booking\Models\Booking;
+use Modules\Booking\Models\Payment;
 
 class TsaTestPaymentGateway extends BaseGateway
 {
@@ -29,13 +30,36 @@ class TsaTestPaymentGateway extends BaseGateway
 
         $service->beforePaymentProcess($booking, $this);
 
+        $reference = 'TSA-PAY-' . now()->format('YmdHis') . '-' . $booking->id;
+        $amount = (float) ($booking->pay_now ?: $booking->total);
+        $currency = $booking->currency ?: setting_item('currency_main', 'USD');
+
+        $payment = new Payment();
+        $payment->booking_id = $booking->id;
+        $payment->payment_gateway = $this->id ?: 'tsa_test';
+        $payment->amount = $amount;
+        $payment->currency = $currency;
+        $payment->status = 'completed';
+        $payment->user_id = $booking->customer_id ?: null;
+        $payment->logs = json_encode([
+            'gateway' => 'tsa_test',
+            'reference' => $reference,
+            'message' => 'TSA test payment completed. No real money was charged.',
+            'booking_code' => $booking->code,
+            'amount' => $amount,
+            'currency' => $currency,
+        ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+        $payment->save();
+        $payment->addMeta('tsa_test_payment_reference', $reference);
+        $payment->addMeta('booking_code', $booking->code);
+
         if ($booking->paid < $booking->total) {
             $booking->paid = $booking->total;
         }
 
         $booking->status = Booking::PAID;
-        $booking->payment_id = $booking->payment_id ?: null;
-        $booking->addMeta('tsa_test_payment_reference', 'TSA-PAY-' . now()->format('YmdHis') . '-' . $booking->id);
+        $booking->payment_id = $payment->id;
+        $booking->addMeta('tsa_test_payment_reference', $reference);
         $booking->save();
 
         try {
