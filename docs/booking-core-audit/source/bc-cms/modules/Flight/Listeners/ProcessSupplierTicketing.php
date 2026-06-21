@@ -40,12 +40,13 @@ class ProcessSupplierTicketing implements ShouldQueue
             return;
         }
 
-        if (in_array($supplierBooking->fulfillment_status, ['ticket_issued', 'booking_confirmed'], true)) {
+        if (in_array($supplierBooking->fulfillment_status, ['ticket_issued', 'booking_confirmed', 'manual_review_required'], true)) {
             return;
         }
 
         $quote = SupplierQuote::find($supplierBooking->quote_id);
         if (!$quote || $quote->isExpired()) {
+            $supplierBooking->payment_status = 'payment_paid';
             $supplierBooking->fulfillment_status = 'manual_review_required';
             $supplierBooking->manual_review_required = true;
             $supplierBooking->save();
@@ -70,6 +71,7 @@ class ProcessSupplierTicketing implements ShouldQueue
         $correlationId = (string) Str::uuid();
 
         try {
+            $supplierBooking->payment_status = 'payment_paid';
             $supplierBooking->fulfillment_status = 'ticketing_in_progress';
             $supplierBooking->save();
 
@@ -93,7 +95,7 @@ class ProcessSupplierTicketing implements ShouldQueue
                 $booking->addMeta('tsa_ticket_numbers', $supplierBooking->ticket_numbers_json ?: []);
                 $booking->addMeta('tsa_fulfillment_status', $supplierBooking->fulfillment_status);
 
-                if (in_array($supplierBooking->fulfillment_status, ['ticket_issued', 'booking_confirmed'], true)) {
+                if (in_array($supplierBooking->fulfillment_status, ['ticket_issued', 'booking_confirmed', 'manual_review_required'], true)) {
                     $booking->status = Booking::CONFIRMED;
                 }
                 if ($supplierBooking->manual_review_required) {
@@ -104,8 +106,9 @@ class ProcessSupplierTicketing implements ShouldQueue
                 $this->log($booking, $quote, 'book', 'success', null, $payload, $response, $duration, $correlationId);
             });
         } catch (\Throwable $e) {
-            report($e);
+            // Do not let filesystem logging block manual-review state transition.
             $duration = (int) ((microtime(true) - $started) * 1000);
+            $supplierBooking->payment_status = 'payment_paid';
             $supplierBooking->fulfillment_status = 'manual_review_required';
             $supplierBooking->manual_review_required = true;
             $supplierBooking->save();
@@ -113,7 +116,7 @@ class ProcessSupplierTicketing implements ShouldQueue
             $booking->addMeta('tsa_fulfillment_status', 'manual_review_required');
             $booking->save();
             $this->log($booking, $quote, 'book', 'failed', 'SUPPLIER_BOOKING_FAILED', $payload, ['error' => $e->getMessage()], $duration, $correlationId);
-            throw $e;
+            return;
         }
     }
 
