@@ -60,6 +60,19 @@
     $paytrPaymentUrl = ($canContinuePaytrPayment && $payment)
         ? url('/booking/confirm/paytr_iframe?booking_code=' . rawurlencode($booking->code) . '&pid=' . rawurlencode($payment->code))
         : null;
+
+    $canRetryPaytrPayment =
+        ($booking->gateway === 'paytr_iframe')
+        && ($booking->status === 'unpaid')
+        && ($paymentStatus === 'fail')
+        && (
+            $supplierPaymentStatus === 'payment_failed'
+            || $fulfillmentStatus === 'payment_failed'
+        );
+
+    $paytrRetryUrl = ($canRetryPaytrPayment && $payment)
+        ? url('/booking/confirm/paytr_iframe?booking_code=' . rawurlencode($booking->code) . '&pid=' . rawurlencode($payment->code) . '&retry=1')
+        : null;
 @endphp
 
 <div class="booking-review supplier-flight-review">
@@ -148,6 +161,17 @@
                 <div class="mt-2">
                     <a href="{{ $paytrPaymentUrl }}" class="btn btn-primary btn-sm">
                         {{ __('Continue PayTR Payment') }}
+                    </a>
+                </div>
+            </div>
+        @elseif($canRetryPaytrPayment && $paytrRetryUrl)
+            <div class="alert alert-danger mt-2">
+                <strong>{{ __('Payment failed.') }}</strong><br>
+                {{ __('Your ticket was not issued because payment was not completed. You can try PayTR payment again.') }}
+
+                <div class="mt-2">
+                    <a href="{{ $paytrRetryUrl }}" class="btn btn-primary btn-sm">
+                        {{ __('Try PayTR Payment Again') }}
                     </a>
                 </div>
             </div>

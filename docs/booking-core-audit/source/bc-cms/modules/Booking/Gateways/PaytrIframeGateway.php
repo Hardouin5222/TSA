@@ -118,6 +118,39 @@ class PaytrIframeGateway extends BaseGateway
             return redirect($booking->getDetailUrl())->with('success', __('Your payment has already been completed.'));
         }
 
+        if (
+            $request->query('retry')
+            && in_array($payment->status, ['fail', 'failed'], true)
+            && $booking->status === 'unpaid'
+        ) {
+            $previousLogs = $payment->logs;
+
+            $payment->status = 'processing';
+            $payment->logs = json_encode([
+                'gateway' => $this->id,
+                'booking_code' => $booking->code,
+                'status' => 'processing',
+                'action' => 'retry_payment',
+                'previous_status' => 'fail',
+                'previous_logs' => $previousLogs ? (json_decode($previousLogs, true) ?: $previousLogs) : null,
+            ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            $payment->save();
+
+            $booking->status = 'processing';
+            $booking->save();
+
+            $supplierBooking = \Modules\Flight\Models\SupplierBooking::where('booking_id', $booking->id)
+                ->latest('id')
+                ->first();
+
+            if ($supplierBooking) {
+                $supplierBooking->payment_status = 'payment_pending';
+                $supplierBooking->fulfillment_status = 'payment_pending';
+                $supplierBooking->manual_review_required = false;
+                $supplierBooking->save();
+            }
+        }
+
         [$ok, $token, $error, $payload, $rawResponse] = $this->requestIframeToken($request, $booking, $payment);
 
         $logs = [
