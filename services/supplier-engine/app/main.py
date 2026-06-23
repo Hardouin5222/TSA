@@ -8,7 +8,9 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
-app = FastAPI(title="TSA Supplier Engine", version="0.1.2")
+from app.adapters import get_flight_adapter
+
+app = FastAPI(title="TSA Supplier Engine", version="0.1.3")
 
 app.add_middleware(
     CORSMiddleware,
@@ -47,6 +49,13 @@ class FlightBookRequest(BaseModel):
     selected_fare_id: Optional[str] = None
     supplier_context: Dict[str, Any] = Field(default_factory=dict)
 
+
+
+def _payload_dict(payload: BaseModel) -> Dict[str, Any]:
+    if hasattr(payload, "model_dump"):
+        return payload.model_dump()
+
+    return payload.dict()
 
 def _parse_date(value: Optional[str]) -> datetime:
     if not value:
@@ -244,142 +253,33 @@ def api_health() -> Dict[str, str]:
 
 @app.post("/api/flights/search")
 def search_flights(payload: FlightSearchRequest) -> Dict[str, Any]:
-    origin = (payload.origin or "IST").upper().strip()
-    destination = (payload.destination or "LHR").upper().strip()
+    adapter = get_flight_adapter()
 
-    if origin == destination:
-        return {"search_id": "search_empty_same_origin_destination", "offers": [], "meta": {"reason": "origin_destination_same"}}
-
-    offers = [
-        _offer(origin, destination, payload.departure_date, "MOCK_DUFFEL", 0, 188.90),
-        _offer(origin, destination, payload.departure_date, "MOCK_MYSTIFLY", 1, 164.40),
-    ]
-
-    return {
-        "search_id": f"search_{origin.lower()}_{destination.lower()}_{_normalized_departure_date(payload.departure_date)}",
-        "offers": offers,
-        "meta": {
-            "mode": "mock_supplier_engine",
-            "origin": origin,
-            "destination": destination,
-            "departure_date": payload.departure_date,
-            "count": len(offers),
-        },
-    }
-
+    return adapter.search(_payload_dict(payload))
 
 @app.post("/api/flights/quote")
 def quote_flight(payload: FlightQuoteRequest) -> Dict[str, Any]:
-    if not payload.offer_id or not payload.selected_fare_id:
-        raise HTTPException(status_code=422, detail="offer_id and selected_fare_id are required")
+    adapter = get_flight_adapter()
 
-    currency = "USD"
-
-    is_mystifly = "mock_mystifly" in payload.offer_id.lower()
-    base_price = 164.40 if is_mystifly else 188.90
-
-    selected_price = base_price
-    if payload.selected_fare_id.endswith("_flex"):
-        selected_price = base_price + 45
-
-    selected_price = round(selected_price, 2)
-
-    # IMPORTANT:
-    # offer_id must be stable, but quote_id must be unique for every quote request.
-    quote_id = f"quote_{payload.offer_id}_{uuid4().hex[:12]}"
-
-    expires = datetime.now(timezone.utc) + timedelta(hours=2)
-
-    supplier_code = payload.supplier_context.get("supplier_code")
-    if not supplier_code:
-        supplier_code = "MOCK_MYSTIFLY" if is_mystifly else "MOCK_DUFFEL"
-
-    return {
-        "quote_id": quote_id,
-        "quote_uuid": quote_id,
-        "offer_id": payload.offer_id,
-        "selected_fare_id": payload.selected_fare_id,
-        "supplier_code": supplier_code,
-        "confirmed_price": {
-            "amount": selected_price,
-            "currency": currency,
-        },
-        "confirmed_total_amount": selected_price,
-        "currency": currency,
-        "price_changed": False,
-        "expires_at": expires.isoformat(),
-        "booking_requirements": {
-            "contact": ["email", "phone"],
-            "travellers": [
-                "first_name",
-                "last_name",
-                "birth_date",
-                "gender",
-                "nationality",
-                "passport_number",
-                "passport_expiry",
-            ],
-            "billing": ["invoice_type"],
-        },
-        "checkout_fields": {
-            "passport_required": True,
-            "birth_date_required": True,
-            "gender_required": True,
-            "nationality_required": True,
-        },
-        "rules": {
-            "refund": "Refund depends on selected fare package.",
-            "change": "Change fees may apply.",
-        },
-        "supplier_context": {
-            **payload.supplier_context,
-            "quote_reference": quote_id,
-            "expires_at": expires.isoformat(),
-        },
-        "status": "quoted",
-    }
-
+    try:
+        return adapter.quote(_payload_dict(payload))
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
 
 @app.post("/api/flights/book")
 def book_flight(payload: FlightBookRequest) -> Dict[str, Any]:
-    if not payload.quote_id:
-        raise HTTPException(status_code=422, detail="quote_id is required")
+    adapter = get_flight_adapter()
 
-    booking_seed = (payload.booking_reference or payload.quote_id).upper().replace("_", "-")[-10:]
-
-    return {
-        "booking_status": "confirmed",
-        "supplier_booking_reference": f"SBR-{booking_seed}",
-        "pnr": f"PNR{booking_seed[-6:]}",
-        "ticket_numbers": [f"235-{booking_seed[-10:]}"],
-        "fulfillment_status": "ticket_issued",
-        "manual_action_required": False,
-        "supplier_context": payload.supplier_context,
-    }
+    try:
+        return adapter.book(_payload_dict(payload))
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
 
 @app.get("/api/flights/bookings/{reference}/status")
 def flight_booking_status(reference: str) -> Dict[str, Any]:
-    clean_reference = (reference or "").strip().upper()
+    adapter = get_flight_adapter()
 
-    if not clean_reference:
-        raise HTTPException(status_code=422, detail="reference is required")
-
-    booking_seed = clean_reference
-    if booking_seed.startswith("SBR-"):
-        booking_seed = booking_seed[4:]
-
-    booking_seed = booking_seed.replace("_", "-")
-
-    return {
-        "booking_status": "confirmed",
-        "fulfillment_status": "ticket_issued",
-        "supplier_booking_reference": clean_reference,
-        "pnr": f"PNR{booking_seed[-6:]}",
-        "ticket_numbers": [f"235-{booking_seed[-10:]}"],
-        "manual_action_required": False,
-        "supplier_context": {
-            "supplier_code": "MOCK_SUPPLIER_ENGINE",
-            "status_mode": "mock_status",
-        },
-    }
-
+    try:
+        return adapter.status(reference)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
