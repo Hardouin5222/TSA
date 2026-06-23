@@ -18,11 +18,19 @@ class FlightSearchManager
     {
         $criteria = $this->normalizeCriteria($input);
         $response = [];
+        $source = 'live';
+        $startedAt = microtime(true);
+
+        /** @var FlightSearchGuard $guard */
+        $guard = app(FlightSearchGuard::class);
 
         try {
             /** @var TsaSupplierBridgeClient $bridge */
             $bridge = app(TsaSupplierBridgeClient::class);
-            $response = $bridge->search($criteria);
+
+            [$response, $source] = $guard->rememberWithSource($criteria, function () use ($bridge, $criteria) {
+                return $bridge->search($criteria);
+            });
         } catch (\Throwable $e) {
             report($e);
             $response = [
@@ -32,6 +40,19 @@ class FlightSearchManager
         }
 
         $rawOffers = $this->extractOffers($response);
+
+        try {
+            $guard->record($criteria, [
+                'status' => empty($response['error']) ? 'allowed' : 'failed',
+                'source' => $source,
+                'supplier_code' => Arr::get($response, 'supplier_code') ?: Arr::get($response, 'data.supplier_code'),
+                'offers_count' => count($rawOffers),
+                'duration_ms' => (int) round((microtime(true) - $startedAt) * 1000),
+                'error_message' => Arr::get($response, 'error'),
+            ]);
+        } catch (\Throwable $e) {
+            report($e);
+        }
 
         $offers = collect($rawOffers)
             ->map(fn (array $offer) => $this->transformSupplierOffer($offer, $criteria))

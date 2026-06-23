@@ -45,10 +45,19 @@ class FlightSearchGuard
     public function currentContext(array $criteria): array
     {
         $request = request();
+        $sessionId = null;
+
+        try {
+            if (method_exists($request, 'hasSession') && $request->hasSession()) {
+                $sessionId = $request->session()->getId();
+            }
+        } catch (\Throwable $e) {
+            $sessionId = null;
+        }
 
         return [
             'ip_hash' => hash('sha256', (string) $request->ip()),
-            'session_hash' => hash('sha256', (string) optional($request->session())->getId()),
+            'session_hash' => $sessionId ? hash('sha256', (string) $sessionId) : null,
             'user_id' => Auth::id(),
             'search_hash' => $this->fingerprint($criteria),
             'cache_key' => $this->cacheKey($criteria),
@@ -89,12 +98,26 @@ class FlightSearchGuard
         ]);
     }
 
-    public function remember(array $criteria, callable $callback): array
+    public function rememberWithSource(array $criteria, callable $callback): array
     {
         if (!$this->isEnabled()) {
-            return $callback();
+            return [$callback(), 'live_unprotected', false];
         }
 
-        return Cache::remember($this->cacheKey($criteria), $this->cacheTtl(), $callback);
+        $cacheKey = $this->cacheKey($criteria);
+
+        if (Cache::has($cacheKey)) {
+            return [Cache::get($cacheKey), 'cache', true];
+        }
+
+        $response = $callback();
+        Cache::put($cacheKey, $response, $this->cacheTtl());
+
+        return [$response, 'live', false];
+    }
+
+    public function remember(array $criteria, callable $callback): array
+    {
+        return $this->rememberWithSource($criteria, $callback)[0];
     }
 }

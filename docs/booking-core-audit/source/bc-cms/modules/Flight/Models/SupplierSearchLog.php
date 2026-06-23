@@ -2,9 +2,9 @@
 
 namespace Modules\Flight\Models;
 
-use App\BaseModel;
+use Illuminate\Database\Eloquent\Model;
 
-class SupplierSearchLog extends BaseModel
+class SupplierSearchLog extends Model
 {
     protected $table = 'bc_tsa_supplier_search_logs';
 
