@@ -6,9 +6,9 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
-from app.adapters import get_flight_adapter
+from app.adapters import SupplierAdapterError, get_flight_adapter
 
-app = FastAPI(title="TSA Supplier Engine", version="0.1.5")
+app = FastAPI(title="TSA Supplier Engine", version="0.1.6")
 
 app.add_middleware(
     CORSMiddleware,
@@ -55,6 +55,17 @@ def _payload_dict(payload: BaseModel) -> Dict[str, Any]:
 
     return payload.dict()
 
+
+def _raise_adapter_error(exc: SupplierAdapterError) -> None:
+    raise HTTPException(
+        status_code=exc.status_code,
+        detail={
+            "error_code": exc.error_code,
+            "message": exc.message,
+            "details": exc.details,
+        },
+    ) from exc
+
 @app.get("/health")
 def health() -> Dict[str, str]:
     return {"status": "ok", "service": "tsa-supplier-engine"}
@@ -69,7 +80,12 @@ def api_health() -> Dict[str, str]:
 def search_flights(payload: FlightSearchRequest) -> Dict[str, Any]:
     adapter = get_flight_adapter()
 
-    return adapter.search(_payload_dict(payload))
+    try:
+        return adapter.search(_payload_dict(payload))
+    except SupplierAdapterError as exc:
+        _raise_adapter_error(exc)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
 
 @app.post("/api/flights/quote")
 def quote_flight(payload: FlightQuoteRequest) -> Dict[str, Any]:
@@ -77,6 +93,8 @@ def quote_flight(payload: FlightQuoteRequest) -> Dict[str, Any]:
 
     try:
         return adapter.quote(_payload_dict(payload))
+    except SupplierAdapterError as exc:
+        _raise_adapter_error(exc)
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
@@ -86,6 +104,8 @@ def book_flight(payload: FlightBookRequest) -> Dict[str, Any]:
 
     try:
         return adapter.book(_payload_dict(payload))
+    except SupplierAdapterError as exc:
+        _raise_adapter_error(exc)
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
@@ -95,5 +115,7 @@ def flight_booking_status(reference: str) -> Dict[str, Any]:
 
     try:
         return adapter.status(reference)
+    except SupplierAdapterError as exc:
+        _raise_adapter_error(exc)
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc

@@ -5,6 +5,7 @@ from typing import Any, Dict
 from uuid import uuid4
 
 from .base import FlightSupplierAdapter
+from .errors import SupplierValidationError
 
 
 def _clean(value: Any) -> str:
@@ -99,7 +100,10 @@ class MockFlightAdapter(FlightSupplierAdapter):
         supplier_context = dict(payload.get("supplier_context") or {})
 
         if not offer_id or not selected_fare_id:
-            raise ValueError("offer_id and selected_fare_id are required")
+            raise SupplierValidationError(
+                "offer_id and selected_fare_id are required",
+                {"missing_fields": ["offer_id", "selected_fare_id"]},
+            )
 
         is_mystifly = "mock_mystifly" in offer_id.lower()
         base_price = 164.40 if is_mystifly else 188.90
@@ -156,7 +160,10 @@ class MockFlightAdapter(FlightSupplierAdapter):
     def book(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         quote_id = str(payload.get("quote_id") or "")
         if not quote_id:
-            raise ValueError("quote_id is required")
+            raise SupplierValidationError(
+                "quote_id is required",
+                {"missing_fields": ["quote_id"]},
+            )
 
         raw_booking_seed = str(payload.get("booking_reference") or quote_id).upper().replace("_", "-").strip("-")
         booking_seed = raw_booking_seed[-10:].strip("-") or "MOCK-0001"
@@ -174,7 +181,10 @@ class MockFlightAdapter(FlightSupplierAdapter):
     def status(self, reference: str) -> Dict[str, Any]:
         clean_reference = str(reference or "").strip().upper()
         if not clean_reference:
-            raise ValueError("reference is required")
+            raise SupplierValidationError(
+                "reference is required",
+                {"missing_fields": ["reference"]},
+            )
 
         booking_seed = clean_reference[4:] if clean_reference.startswith("SBR-") else clean_reference
         booking_seed = booking_seed.replace("_", "-")
