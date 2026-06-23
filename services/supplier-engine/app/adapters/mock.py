@@ -158,7 +158,8 @@ class MockFlightAdapter(FlightSupplierAdapter):
         if not quote_id:
             raise ValueError("quote_id is required")
 
-        booking_seed = str(payload.get("booking_reference") or quote_id).upper().replace("_", "-")[-10:]
+        raw_booking_seed = str(payload.get("booking_reference") or quote_id).upper().replace("_", "-").strip("-")
+        booking_seed = raw_booking_seed[-10:].strip("-") or "MOCK-0001"
 
         return {
             "booking_status": "confirmed",

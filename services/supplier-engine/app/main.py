@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field
 
 from app.adapters import get_flight_adapter
 
-app = FastAPI(title="TSA Supplier Engine", version="0.1.4")
+app = FastAPI(title="TSA Supplier Engine", version="0.1.5")
 
 app.add_middleware(
     CORSMiddleware,
