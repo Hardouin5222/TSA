@@ -28,9 +28,9 @@ class PaytrIframeGateway extends BaseGateway
 
     protected function hasMerchantCredentials(): bool
     {
-        $merchantId = $this->getOption('merchant_id') ?: env('PAYTR_MERCHANT_ID');
-        $merchantKey = $this->getOption('merchant_key') ?: env('PAYTR_MERCHANT_KEY');
-        $merchantSalt = $this->getOption('merchant_salt') ?: env('PAYTR_MERCHANT_SALT');
+        $merchantId = env('PAYTR_MERCHANT_ID') ?: $this->getOption('merchant_id');
+        $merchantKey = env('PAYTR_MERCHANT_KEY');
+        $merchantSalt = env('PAYTR_MERCHANT_SALT');
 
         return !empty($merchantId) && !empty($merchantKey) && !empty($merchantSalt);
     }
@@ -179,12 +179,12 @@ class PaytrIframeGateway extends BaseGateway
 
     protected function requestIframeToken(Request $request, Booking $booking, Payment $payment): array
     {
-        $merchantId = $this->getOption('merchant_id') ?: env('PAYTR_MERCHANT_ID');
-        $merchantKey = $this->getOption('merchant_key') ?: env('PAYTR_MERCHANT_KEY');
-        $merchantSalt = $this->getOption('merchant_salt') ?: env('PAYTR_MERCHANT_SALT');
+        $merchantId = env('PAYTR_MERCHANT_ID') ?: $this->getOption('merchant_id');
+        $merchantKey = env('PAYTR_MERCHANT_KEY');
+        $merchantSalt = env('PAYTR_MERCHANT_SALT');
 
         if (!$merchantId || !$merchantKey || !$merchantSalt) {
-            return [false, null, 'PayTR merchant_id / merchant_key / merchant_salt settings are missing.', [], null];
+            return [false, null, 'PayTR credentials are missing. Set PAYTR_MERCHANT_ID, PAYTR_MERCHANT_KEY and PAYTR_MERCHANT_SALT in .env.', [], null];
         }
 
         $payload = $this->buildTokenPayload($request, $booking, $payment, $merchantId, $merchantKey, $merchantSalt);
@@ -459,9 +459,7 @@ HTML;
         return [
             ['type' => 'checkbox', 'id' => 'enable', 'label' => __('Enable PayTR iFrame?')],
             ['type' => 'input', 'id' => 'name', 'label' => __('Custom Name'), 'std' => __('PayTR iFrame'), 'multi_lang' => '1'],
-            ['type' => 'input', 'id' => 'merchant_id', 'label' => __('PayTR Merchant ID')],
-            ['type' => 'input', 'id' => 'merchant_key', 'label' => __('PayTR Merchant Key')],
-            ['type' => 'input', 'id' => 'merchant_salt', 'label' => __('PayTR Merchant Salt')],
+            ['type' => 'input', 'id' => 'merchant_id', 'label' => __('PayTR Merchant ID (optional fallback, prefer .env)')],
             ['type' => 'checkbox', 'id' => 'test_mode', 'label' => __('PayTR Test Mode?')],
             ['type' => 'checkbox', 'id' => 'debug_on', 'label' => __('PayTR Debug On?')],
             ['type' => 'input', 'id' => 'timeout_limit', 'label' => __('PayTR Timeout Limit'), 'std' => '30'],
