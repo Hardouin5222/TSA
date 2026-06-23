@@ -40,6 +40,26 @@
     $statusLabel = $fulfillmentStatus
         ? ucfirst(str_replace('_', ' ', $fulfillmentStatus))
         : __('Pending');
+
+    $payment = $booking->payment_id
+        ? \Modules\Booking\Models\Payment::find($booking->payment_id)
+        : null;
+
+    $paymentStatus = $payment->status ?? null;
+    $supplierPaymentStatus = $supplierBooking->payment_status ?? null;
+
+    $canContinuePaytrPayment =
+        ($booking->gateway === 'paytr_iframe')
+        && in_array($booking->status, ['processing', 'unpaid'], true)
+        && ($paymentStatus === 'processing')
+        && (
+            $supplierPaymentStatus === 'payment_pending'
+            || $fulfillmentStatus === 'payment_pending'
+        );
+
+    $paytrPaymentUrl = ($canContinuePaytrPayment && $payment)
+        ? url('/booking/confirm/paytr_iframe?booking_code=' . rawurlencode($booking->code) . '&pid=' . rawurlencode($payment->code))
+        : null;
 @endphp
 
 <div class="booking-review supplier-flight-review">
@@ -120,7 +140,18 @@
             </ul>
         @endif
 
-        @if($manualReview)
+        @if($canContinuePaytrPayment && $paytrPaymentUrl)
+            <div class="alert alert-info mt-2">
+                <strong>{{ __('Payment is waiting.') }}</strong><br>
+                {{ __('Your ticketing will start after PayTR confirms your payment.') }}
+
+                <div class="mt-2">
+                    <a href="{{ $paytrPaymentUrl }}" class="btn btn-primary btn-sm">
+                        {{ __('Continue PayTR Payment') }}
+                    </a>
+                </div>
+            </div>
+        @elseif($manualReview)
             <div class="alert alert-warning mt-2">
                 {{ __('Your payment was received. Ticketing needs manual review. Our operation team will follow up.') }}
             </div>
