@@ -18,6 +18,7 @@ use Modules\Booking\Gateways\StripeCheckoutGateway;
 use Modules\Booking\Gateways\PaystackGateway;
 use Modules\Booking\Gateways\PayrexxGateway;
 use Modules\Booking\Gateways\TsaTestPaymentGateway;
+use Modules\Booking\Gateways\PaytrIframeGateway;
 
 class ModuleProvider extends ModuleServiceProvider
 {
@@ -40,6 +41,7 @@ class ModuleProvider extends ModuleServiceProvider
         PaymentGatewayManager::register('paystack', PaystackGateway::class);
         PaymentGatewayManager::register('payrexx', PayrexxGateway::class);
         PaymentGatewayManager::register('tsa_test', TsaTestPaymentGateway::class);
+        PaymentGatewayManager::register('paytr_iframe', PaytrIframeGateway::class);
     }
 
     /**
