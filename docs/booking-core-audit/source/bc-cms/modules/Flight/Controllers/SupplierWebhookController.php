@@ -38,7 +38,7 @@ class SupplierWebhookController extends Controller
                 'request_json' => $request->all(),
             ]);
 
-            return response()->json(['ok' => true]);
+            return $this->paymentWebhookResponse($provider);
         }
 
         $booking = Booking::where('code', $bookingCode)->first();
@@ -52,7 +52,7 @@ class SupplierWebhookController extends Controller
                 'request_json' => $request->all(),
             ]);
 
-            return response()->json(['ok' => true]);
+            return $this->paymentWebhookResponse($provider);
         }
 
         $supplierBooking = SupplierBooking::where('booking_id', $booking->id)->first();
@@ -67,7 +67,7 @@ class SupplierWebhookController extends Controller
                 'request_json' => $request->all(),
             ]);
 
-            return response()->json(['ok' => true]);
+            return $this->paymentWebhookResponse($provider);
         }
 
         if ($paymentStatus === 'failed') {
@@ -91,7 +91,7 @@ class SupplierWebhookController extends Controller
                 'request_json' => $request->all(),
             ]);
 
-            return response()->json(['ok' => true]);
+            return $this->paymentWebhookResponse($provider);
         }
 
         if ($paymentStatus !== 'paid') {
@@ -108,7 +108,7 @@ class SupplierWebhookController extends Controller
                 'request_json' => $request->all(),
             ]);
 
-            return response()->json(['ok' => true]);
+            return $this->paymentWebhookResponse($provider);
         }
 
         $payment = $this->recordPaymentTransaction($booking, $provider, $request->all(), 'completed');
@@ -118,7 +118,7 @@ class SupplierWebhookController extends Controller
             'booking_confirmed',
             'ticket_issued',
         ], true)) {
-            return response()->json([
+            return $this->paymentWebhookResponse($provider, [
                 'ok' => true,
                 'idempotent' => true,
             ]);
@@ -156,9 +156,19 @@ class SupplierWebhookController extends Controller
             'currency' => $payment->currency,
         ])));
 
-        return response()->json(['ok' => true]);
+        return $this->paymentWebhookResponse($provider);
     }
 
+
+    protected function paymentWebhookResponse(string $provider, array $payload = []):
+    \Illuminate\Http\Response|\Illuminate\Http\JsonResponse
+    {
+        if ($this->isPaytrProvider($provider)) {
+            return response('OK', 200)->header('Content-Type', 'text/plain');
+        }
+
+        return response()->json($payload ?: ['ok' => true]);
+    }
 
     protected function recordPaymentTransaction(Booking $booking, string $provider, array $payload, string $status): Payment
     {
@@ -228,8 +238,15 @@ class SupplierWebhookController extends Controller
             }
         }
 
+        foreach (['total_amount', 'payment_amount'] as $key) {
+            if (isset($payload[$key]) && is_numeric($payload[$key])) {
+                return (float) $payload[$key] / 100;
+            }
+        }
+
         return (float) ($booking->pay_now ?: $booking->total);
     }
+
 
     protected function resolvePaymentCurrency(Booking $booking, array $payload): string
     {
@@ -259,11 +276,46 @@ class SupplierWebhookController extends Controller
             return true;
         }
 
-        // TODO: Live mode için provider bazlı imza kontrolü eklenecek.
-        // iyzico: conversationId/paymentId ile provider API doğrulama veya signed callback data.
-        // PayTR/Kuveyt Türk: merchant key/salt/hash doğrulama.
+        if ($this->isPaytrProvider($provider)) {
+            return $this->verifyPaytrSignature($request);
+        }
+
         return false;
     }
+
+    protected function isPaytrProvider(string $provider): bool
+    {
+        return stripos($provider, 'paytr') === 0;
+    }
+
+    protected function verifyPaytrSignature(Request $request): bool
+    {
+        $merchantKey = setting_item('g_paytr_iframe_merchant_key') ?: env('PAYTR_MERCHANT_KEY');
+        $merchantSalt = setting_item('g_paytr_iframe_merchant_salt') ?: env('PAYTR_MERCHANT_SALT');
+
+        if (!$merchantKey || !$merchantSalt) {
+            return false;
+        }
+
+        $merchantOid = (string) $request->input('merchant_oid');
+        $status = (string) $request->input('status');
+        $totalAmount = (string) $request->input('total_amount');
+        $hash = (string) $request->input('hash');
+
+        if (!$merchantOid || !$status || !$totalAmount || !$hash) {
+            return false;
+        }
+
+        $calculatedHash = base64_encode(hash_hmac(
+            'sha256',
+            $merchantOid . $merchantSalt . $status . $totalAmount,
+            $merchantKey,
+            true
+        ));
+
+        return hash_equals($calculatedHash, $hash);
+    }
+
 
     protected function normalizePaymentStatus(string $provider, array $payload): string
     {
