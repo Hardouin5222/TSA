@@ -110,6 +110,14 @@ class PaytrIframeGateway extends BaseGateway
             return response($this->renderErrorPage('PayTR payment record could not be found.'), 404);
         }
 
+        if (
+            in_array($payment->status, ['completed', 'paid'], true)
+            || in_array($booking->status, [Booking::PAID, Booking::CONFIRMED], true)
+            || !empty($booking->paid)
+        ) {
+            return redirect($booking->getDetailUrl())->with('success', __('Your payment has already been completed.'));
+        }
+
         [$ok, $token, $error, $payload, $rawResponse] = $this->requestIframeToken($request, $booking, $payment);
 
         $logs = [
