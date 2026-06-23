@@ -32,9 +32,10 @@ class FlightSearchManager
                 return $bridge->search($criteria);
             });
         } catch (\Throwable $e) {
-            $isRateLimited = str_starts_with($e->getMessage(), 'SEARCH_RATE_LIMITED');
+            $isGuardBlocked = str_starts_with($e->getMessage(), 'SEARCH_RATE_LIMITED')
+                || str_starts_with($e->getMessage(), 'SEARCH_L2B_BLOCKED');
 
-            if ($isRateLimited) {
+            if ($isGuardBlocked) {
                 $source = 'blocked';
             } else {
                 report($e);

@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 use Modules\Flight\Models\SupplierSearchLog;
+use Modules\Flight\Models\SupplierBooking;
 
 class FlightSearchGuard
 {
@@ -70,6 +71,8 @@ class FlightSearchGuard
             return;
         }
 
+        $this->assertLookToBookAllowed();
+
         $context = $this->currentContext($criteria);
         $actorKey = $this->rateLimitActorKey($context);
 
@@ -85,6 +88,77 @@ class FlightSearchGuard
         if ($hourCount > $hourLimit) {
             throw new \RuntimeException('SEARCH_RATE_LIMITED: too many live flight searches per hour');
         }
+    }
+
+    public function assertLookToBookAllowed(): void
+    {
+        if (!$this->shouldEnforceLookToBook()) {
+            return;
+        }
+
+        $snapshot = $this->lookToBookSnapshot();
+        $blockRatio = (float) config('flight.search_l2b_block_ratio', 1450);
+
+        $isOverLimit = $snapshot['search_count'] > $blockRatio && $snapshot['ratio'] > $blockRatio;
+
+        if (!$isOverLimit) {
+            return;
+        }
+
+        if (!(bool) config('flight.search_l2b_hard_block', false)) {
+            return;
+        }
+
+        throw new \RuntimeException('SEARCH_L2B_BLOCKED: live flight search paused because look-to-book ratio is too high');
+    }
+
+    public function lookToBookSnapshot(): array
+    {
+        $windowDays = max(1, (int) config('flight.search_l2b_window_days', 30));
+        $since = now()->subDays($windowDays);
+
+        $searchCount = SupplierSearchLog::query()
+            ->where('created_at', '>=', $since)
+            ->where('status', 'allowed')
+            ->whereIn('source', ['live', 'live_unprotected'])
+            ->count();
+
+        $bookingCount = SupplierBooking::query()
+            ->where('created_at', '>=', $since)
+            ->whereIn('fulfillment_status', ['ticketing_in_progress', 'booking_confirmed', 'ticket_issued'])
+            ->count();
+
+        $denominator = max(1, $bookingCount);
+        $ratio = $searchCount / $denominator;
+
+        return [
+            'enabled' => $this->shouldEnforceLookToBook(),
+            'window_days' => $windowDays,
+            'search_count' => $searchCount,
+            'booking_count' => $bookingCount,
+            'ratio' => round($ratio, 4),
+            'warning_ratio' => (float) config('flight.search_l2b_warning_ratio', 1200),
+            'block_ratio' => (float) config('flight.search_l2b_block_ratio', 1450),
+            'hard_block' => (bool) config('flight.search_l2b_hard_block', false),
+            'supplier_mode' => strtolower((string) config('flight.supplier_engine_mode', 'mock')),
+        ];
+    }
+
+    protected function shouldEnforceLookToBook(): bool
+    {
+        if (!(bool) config('flight.search_l2b_enabled', true)) {
+            return false;
+        }
+
+        $mode = strtolower((string) config('flight.supplier_engine_mode', 'mock'));
+
+        if (in_array($mode, ['mock', 'mock_supplier', 'mock_supplier_engine'], true)) {
+            return false;
+        }
+
+        $liveModes = array_map('strtolower', (array) config('flight.search_live_supplier_modes', []));
+
+        return $mode === 'bridge' || empty($liveModes) || in_array($mode, $liveModes, true);
     }
 
     protected function rateLimitActorKey(array $context): string

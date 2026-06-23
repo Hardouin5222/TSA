@@ -20,7 +20,10 @@ return [
     'search_cache_ttl_seconds' => env('TSA_SEARCH_CACHE_TTL_SECONDS', 900),
     'search_rate_limit_per_minute' => env('TSA_SEARCH_RATE_LIMIT_PER_MINUTE', 12),
     'search_rate_limit_per_hour' => env('TSA_SEARCH_RATE_LIMIT_PER_HOUR', 120),
+    'search_l2b_enabled' => env('TSA_SEARCH_L2B_ENABLED', true),
+    'search_l2b_hard_block' => env('TSA_SEARCH_L2B_HARD_BLOCK', false),
     'search_l2b_warning_ratio' => env('TSA_SEARCH_L2B_WARNING_RATIO', 1200),
     'search_l2b_block_ratio' => env('TSA_SEARCH_L2B_BLOCK_RATIO', 1450),
+    'search_l2b_window_days' => env('TSA_SEARCH_L2B_WINDOW_DAYS', 30),
     'search_live_supplier_modes' => array_values(array_filter(array_map('trim', explode(',', env('TSA_SEARCH_LIVE_SUPPLIER_MODES', 'duffel_sandbox,biletbank_sandbox'))))),
 ];
