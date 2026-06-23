@@ -5,6 +5,7 @@ from typing import Dict
 
 from .base import FlightSupplierAdapter
 from .mock import MockFlightAdapter
+from .duffel import DuffelFlightAdapter
 from .placeholders import NotConfiguredFlightAdapter
 
 
@@ -12,7 +13,7 @@ _ADAPTERS: Dict[str, FlightSupplierAdapter] = {
     "mock": MockFlightAdapter(),
     "mock_supplier_engine": MockFlightAdapter(),
     "MOCK_SUPPLIER_ENGINE": MockFlightAdapter(),
-    "duffel_sandbox": NotConfiguredFlightAdapter("DUFFEL_SANDBOX", ["DUFFEL_API_TOKEN"]),
+    "duffel_sandbox": DuffelFlightAdapter(sandbox=True),
     "mystifly_sandbox": NotConfiguredFlightAdapter("MYSTIFLY_SANDBOX", ["MYSTIFLY_USERNAME", "MYSTIFLY_PASSWORD", "MYSTIFLY_ACCOUNT_NUMBER"]),
     "biletbank_sandbox": NotConfiguredFlightAdapter("BILETBANK_SANDBOX", ["BILETBANK_USERNAME", "BILETBANK_PASSWORD", "BILETBANK_AGENCY_CODE"]),
 }
