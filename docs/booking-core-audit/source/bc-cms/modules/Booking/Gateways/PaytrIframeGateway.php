@@ -13,6 +13,28 @@ class PaytrIframeGateway extends BaseGateway
     public $name = 'PayTR iFrame';
     public $is_offline = false;
 
+    public function isAvailable()
+    {
+        if (!parent::isAvailable()) {
+            return false;
+        }
+
+        if (app()->environment('production') && !$this->hasMerchantCredentials()) {
+            return false;
+        }
+
+        return true;
+    }
+
+    protected function hasMerchantCredentials(): bool
+    {
+        $merchantId = $this->getOption('merchant_id') ?: env('PAYTR_MERCHANT_ID');
+        $merchantKey = $this->getOption('merchant_key') ?: env('PAYTR_MERCHANT_KEY');
+        $merchantSalt = $this->getOption('merchant_salt') ?: env('PAYTR_MERCHANT_SALT');
+
+        return !empty($merchantId) && !empty($merchantKey) && !empty($merchantSalt);
+    }
+
     public function process(Request $request, $booking, $service)
     {
         $service->beforePaymentProcess($booking, $this);
