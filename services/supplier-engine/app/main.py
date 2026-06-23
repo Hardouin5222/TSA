@@ -8,7 +8,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
-app = FastAPI(title="TSA Supplier Engine", version="0.1.1")
+app = FastAPI(title="TSA Supplier Engine", version="0.1.2")
 
 app.add_middleware(
     CORSMiddleware,
@@ -356,3 +356,30 @@ def book_flight(payload: FlightBookRequest) -> Dict[str, Any]:
         "manual_action_required": False,
         "supplier_context": payload.supplier_context,
     }
+
+@app.get("/api/flights/bookings/{reference}/status")
+def flight_booking_status(reference: str) -> Dict[str, Any]:
+    clean_reference = (reference or "").strip().upper()
+
+    if not clean_reference:
+        raise HTTPException(status_code=422, detail="reference is required")
+
+    booking_seed = clean_reference
+    if booking_seed.startswith("SBR-"):
+        booking_seed = booking_seed[4:]
+
+    booking_seed = booking_seed.replace("_", "-")
+
+    return {
+        "booking_status": "confirmed",
+        "fulfillment_status": "ticket_issued",
+        "supplier_booking_reference": clean_reference,
+        "pnr": f"PNR{booking_seed[-6:]}",
+        "ticket_numbers": [f"235-{booking_seed[-10:]}"],
+        "manual_action_required": False,
+        "supplier_context": {
+            "supplier_code": "MOCK_SUPPLIER_ENGINE",
+            "status_mode": "mock_status",
+        },
+    }
+
