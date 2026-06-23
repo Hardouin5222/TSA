@@ -40,3 +40,31 @@ After editing Laravel .env:
 php artisan optimize:clear
 php artisan config:clear
 ```
+
+## Adapter modes
+
+The supplier engine uses `TSA_SUPPLIER_ENGINE_MODE` to select a flight supplier adapter.
+
+Supported MVP modes:
+
+    TSA_SUPPLIER_ENGINE_MODE=mock
+    TSA_SUPPLIER_ENGINE_MODE=duffel_sandbox
+    TSA_SUPPLIER_ENGINE_MODE=mystifly_sandbox
+    TSA_SUPPLIER_ENGINE_MODE=biletbank_sandbox
+
+`mock` returns local normalized offers and is safe for development.
+
+The sandbox modes are registered as safe placeholders. If their credentials are missing, they return a normalized `SUPPLIER_NOT_CONFIGURED` error instead of a raw 500 error.
+
+## Future supplier credentials
+
+    DUFFEL_API_TOKEN=
+
+    MYSTIFLY_USERNAME=
+    MYSTIFLY_PASSWORD=
+    MYSTIFLY_ACCOUNT_NUMBER=
+
+    BILETBANK_USERNAME=
+    BILETBANK_PASSWORD=
+    BILETBANK_AGENCY_CODE=
+
