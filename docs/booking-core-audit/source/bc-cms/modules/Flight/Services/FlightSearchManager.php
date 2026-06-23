@@ -32,7 +32,14 @@ class FlightSearchManager
                 return $bridge->search($criteria);
             });
         } catch (\Throwable $e) {
-            report($e);
+            $isRateLimited = str_starts_with($e->getMessage(), 'SEARCH_RATE_LIMITED');
+
+            if ($isRateLimited) {
+                $source = 'blocked';
+            } else {
+                report($e);
+            }
+
             $response = [
                 'offers' => [],
                 'error' => $e->getMessage(),
@@ -43,7 +50,7 @@ class FlightSearchManager
 
         try {
             $guard->record($criteria, [
-                'status' => empty($response['error']) ? 'allowed' : 'failed',
+                'status' => $source === 'blocked' ? 'blocked' : (empty($response['error']) ? 'allowed' : 'failed'),
                 'source' => $source,
                 'supplier_code' => Arr::get($response, 'supplier_code') ?: Arr::get($response, 'data.supplier_code'),
                 'offers_count' => count($rawOffers),

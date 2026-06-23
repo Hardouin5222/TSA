@@ -64,6 +64,49 @@ class FlightSearchGuard
         ];
     }
 
+    public function assertAllowed(array $criteria): void
+    {
+        if (!$this->isEnabled()) {
+            return;
+        }
+
+        $context = $this->currentContext($criteria);
+        $actorKey = $this->rateLimitActorKey($context);
+
+        $minuteLimit = max(1, (int) config('flight.search_rate_limit_per_minute', 12));
+        $hourLimit = max($minuteLimit, (int) config('flight.search_rate_limit_per_hour', 120));
+
+        $minuteCount = $this->incrementRateCounter('tsa:flight-search-rate:minute:' . $actorKey, 60);
+        if ($minuteCount > $minuteLimit) {
+            throw new \RuntimeException('SEARCH_RATE_LIMITED: too many live flight searches per minute');
+        }
+
+        $hourCount = $this->incrementRateCounter('tsa:flight-search-rate:hour:' . $actorKey, 3600);
+        if ($hourCount > $hourLimit) {
+            throw new \RuntimeException('SEARCH_RATE_LIMITED: too many live flight searches per hour');
+        }
+    }
+
+    protected function rateLimitActorKey(array $context): string
+    {
+        if (!empty($context['user_id'])) {
+            return 'user:' . $context['user_id'];
+        }
+
+        if (!empty($context['session_hash'])) {
+            return 'session:' . $context['session_hash'];
+        }
+
+        return 'ip:' . ($context['ip_hash'] ?? 'unknown');
+    }
+
+    protected function incrementRateCounter(string $key, int $seconds): int
+    {
+        Cache::add($key, 0, $seconds);
+
+        return (int) Cache::increment($key);
+    }
+
     public function record(array $criteria, array $meta = []): SupplierSearchLog
     {
         $context = $this->currentContext($criteria);
@@ -109,6 +152,8 @@ class FlightSearchGuard
         if (Cache::has($cacheKey)) {
             return [Cache::get($cacheKey), 'cache', true];
         }
+
+        $this->assertAllowed($criteria);
 
         $response = $callback();
         Cache::put($cacheKey, $response, $this->cacheTtl());
