@@ -14,4 +14,13 @@ return [
 
     // Live mode must set this to false and implement provider signature checks in SupplierWebhookController.
     'disable_webhook_signature_check' => env('TSA_DISABLE_WEBHOOK_SIGNATURE_CHECK', env('APP_ENV') !== 'production'),
+
+    // TSA Search Guard / Look-to-Book protection
+    'search_guard_enabled' => env('TSA_SEARCH_GUARD_ENABLED', true),
+    'search_cache_ttl_seconds' => env('TSA_SEARCH_CACHE_TTL_SECONDS', 900),
+    'search_rate_limit_per_minute' => env('TSA_SEARCH_RATE_LIMIT_PER_MINUTE', 12),
+    'search_rate_limit_per_hour' => env('TSA_SEARCH_RATE_LIMIT_PER_HOUR', 120),
+    'search_l2b_warning_ratio' => env('TSA_SEARCH_L2B_WARNING_RATIO', 1200),
+    'search_l2b_block_ratio' => env('TSA_SEARCH_L2B_BLOCK_RATIO', 1450),
+    'search_live_supplier_modes' => array_values(array_filter(array_map('trim', explode(',', env('TSA_SEARCH_LIVE_SUPPLIER_MODES', 'duffel_sandbox,biletbank_sandbox'))))),
 ];
