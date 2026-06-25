@@ -116,7 +116,7 @@ class SupplierFlightService
         ];
     }
 
-    protected function resolveQuote(SupplierOffer $offer, Request $request, Booking $booking = null): ?SupplierQuote
+    protected function resolveQuote(SupplierOffer $offer, Request $request, ?Booking $booking = null): ?SupplierQuote
     {
         $quoteUuid = $request->input('tsa_quote_uuid');
 
