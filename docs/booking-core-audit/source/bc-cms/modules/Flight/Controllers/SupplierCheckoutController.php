@@ -40,14 +40,28 @@ class SupplierCheckoutController extends Controller
             'child_count' => 'nullable|integer|min:0|max:9',
         ]);
 
-        $supplierData = $this->searchManager->search($request->all());
-        $offer = collect($supplierData['offers'] ?? [])->firstWhere('id', $request->input('selected_offer'));
+        $selectedOfferId = (string) $request->input('selected_offer');
+        $selectedFareId = (string) $request->input('selected_fare');
+
+        $searchCriteria = $this->quoteSearchCriteria($request);
+        $supplierData = $this->searchManager->search($searchCriteria);
+
+        $offer = collect($supplierData['offers'] ?? [])->firstWhere('id', $selectedOfferId);
+
+        if (!$offer) {
+            $offer = $this->fallbackOfferForDirectQuote($request, $selectedOfferId, $selectedFareId);
+        }
 
         if (!$offer) {
             return back()->with('error', __('The selected flight offer is no longer available. Please search again.'));
         }
 
-        $fare = collect($offer['fare_options'] ?? [])->firstWhere('id', $request->input('selected_fare'));
+        $fare = collect($offer['fare_options'] ?? [])->firstWhere('id', $selectedFareId);
+
+        if (!$fare) {
+            $fare = $this->fallbackFareForDirectQuote($request, $selectedFareId);
+        }
+
         if (!$fare) {
             return back()->with('error', __('The selected fare package is no longer available. Please choose another package.'));
         }
@@ -77,6 +91,33 @@ class SupplierCheckoutController extends Controller
         } catch (\Throwable $e) {
             report($e);
             return back()->with('error', __('We could not confirm this flight price. Please try again.'));
+        }
+
+        $latestOffer = Arr::get($quoteResponse, 'latest_offer');
+        if (is_array($latestOffer) && !empty($latestOffer)) {
+            $offer = array_replace_recursive($offer, $latestOffer);
+            $offer['id'] = Arr::get($offer, 'id') ?: $selectedOfferId;
+            $offer['offer_id'] = Arr::get($offer, 'offer_id') ?: $selectedOfferId;
+            $offer['supplier_offer_id'] = Arr::get($offer, 'supplier_offer_id') ?: $selectedOfferId;
+            $offer['supplier_code'] = Arr::get($offer, 'supplier_code') ?: Arr::get($quoteResponse, 'supplier_code');
+            $offer['supplier'] = Arr::get($offer, 'supplier') ?: Arr::get($quoteResponse, 'supplier_code');
+            $offer['provider'] = Arr::get($offer, 'provider') ?: Arr::get($quoteResponse, 'supplier_code');
+            $offer['total_amount'] = Arr::get($quoteResponse, 'confirmed_total_amount') ?: Arr::get($offer, 'total_amount');
+            $offer['price'] = Arr::get($quoteResponse, 'confirmed_total_amount') ?: Arr::get($offer, 'price');
+            $offer['currency'] = Arr::get($quoteResponse, 'currency') ?: Arr::get($offer, 'currency');
+
+            $latestFare = collect($offer['fare_options'] ?? [])->firstWhere('id', $selectedFareId)
+                ?: collect($offer['fare_options'] ?? [])->first();
+
+            if ($latestFare) {
+                $fare = array_replace($fare, (array) $latestFare);
+            }
+
+            $fare['id'] = Arr::get($fare, 'id') ?: $selectedFareId;
+            $fare['fare_id'] = Arr::get($fare, 'fare_id') ?: $selectedFareId;
+            $fare['total_amount'] = Arr::get($quoteResponse, 'confirmed_total_amount') ?: Arr::get($fare, 'total_amount') ?: Arr::get($fare, 'price') ?: 0;
+            $fare['price'] = Arr::get($quoteResponse, 'confirmed_total_amount') ?: Arr::get($fare, 'price') ?: Arr::get($fare, 'total_amount') ?: 0;
+            $fare['currency'] = Arr::get($quoteResponse, 'currency') ?: Arr::get($fare, 'currency') ?: Arr::get($offer, 'currency', 'USD');
         }
 
         return DB::transaction(function () use ($request, $offer, $fare, $quoteResponse, $quotePayload) {
@@ -177,4 +218,88 @@ class SupplierCheckoutController extends Controller
             return redirect($booking->getCheckoutUrl());
         });
     }
+    protected function quoteSearchCriteria(Request $request): array
+    {
+        return array_filter([
+            'origin' => strtoupper(trim((string) $request->input('origin'))),
+            'destination' => strtoupper(trim((string) $request->input('destination'))),
+            'departure_date' => $request->input('departure_date'),
+            'return_date' => $request->input('return_date'),
+            'adult_count' => (int) $request->input('adult_count', 1),
+            'child_count' => (int) $request->input('child_count', 0),
+            'infant_count' => (int) $request->input('infant_count', 0),
+            'cabin_class' => $request->input('cabin_class', 'economy'),
+            'currency' => $request->input('currency', 'USD'),
+        ], static fn ($value) => $value !== null && $value !== '');
+    }
+
+    protected function fallbackOfferForDirectQuote(Request $request, string $selectedOfferId, string $selectedFareId): ?array
+    {
+        if (!$selectedOfferId || !Str::startsWith($selectedOfferId, 'off_')) {
+            return null;
+        }
+
+        $supplierCode = 'DUFFEL_SANDBOX';
+        $currency = strtoupper((string) $request->input('currency', 'USD'));
+        $fare = $this->fallbackFareForDirectQuote($request, $selectedFareId);
+
+        return [
+            'id' => $selectedOfferId,
+            'offer_id' => $selectedOfferId,
+            'template_id' => $selectedOfferId,
+            'supplier_offer_id' => $selectedOfferId,
+            'provider' => $supplierCode,
+            'supplier' => $supplierCode,
+            'supplier_code' => $supplierCode,
+            'origin' => strtoupper((string) $request->input('origin')),
+            'destination' => strtoupper((string) $request->input('destination')),
+            'departure_at' => $request->input('departure_date'),
+            'arrival_at' => null,
+            'currency' => $currency,
+            'price_currency' => $currency,
+            'total_amount' => 0,
+            'amount' => 0,
+            'price' => 0,
+            'fare_family' => 'Standard',
+            'fare_options' => [$fare],
+            'selected_fare' => $fare,
+            'rules' => [],
+            'capabilities' => [
+                'instant_ticketing_supported' => true,
+                'passport_required' => true,
+                'birth_date_required' => true,
+                'gender_required' => true,
+                'nationality_required' => true,
+            ],
+            'supplier_context' => [
+                'supplier_code' => $supplierCode,
+                'raw_offer_id' => $selectedOfferId,
+                'pricing_token' => $selectedOfferId,
+                'quote_reference' => $selectedOfferId,
+            ],
+            'payload' => [
+                'id' => $selectedOfferId,
+                'offer_id' => $selectedOfferId,
+                'supplier_code' => $supplierCode,
+            ],
+        ];
+    }
+
+    protected function fallbackFareForDirectQuote(Request $request, string $selectedFareId): array
+    {
+        $currency = strtoupper((string) $request->input('currency', 'USD'));
+
+        return [
+            'id' => $selectedFareId ?: 'standard',
+            'fare_id' => $selectedFareId ?: 'standard',
+            'label' => 'Standard',
+            'name' => 'Standard',
+            'currency' => $currency,
+            'total_price' => 0,
+            'total_amount' => 0,
+            'price' => 0,
+            'features' => ['Duffel live availability', 'Quote required before payment'],
+        ];
+    }
+
 }

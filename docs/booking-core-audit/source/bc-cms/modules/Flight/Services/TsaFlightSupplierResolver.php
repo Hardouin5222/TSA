@@ -50,6 +50,22 @@ class TsaFlightSupplierResolver
             ];
         }
 
+        if ($searchSupplier === 'DUFFEL_SANDBOX') {
+            $duffelSandboxCheckoutEnabled = filter_var(env('TSA_DUFFEL_SANDBOX_CHECKOUT_ENABLED', true), FILTER_VALIDATE_BOOL);
+
+            return [
+                'market' => 'GLOBAL',
+                'search_supplier' => $searchSupplier,
+                'ticketing_supplier' => 'DUFFEL_SANDBOX',
+                'payment_provider' => env('TSA_DUFFEL_SANDBOX_PAYMENT_PROVIDER', 'TEST_PAYMENT'),
+                'ticketing_mode' => 'sandbox',
+                'checkout_enabled' => $duffelSandboxCheckoutEnabled,
+                'price_validation_required' => true,
+                'origin' => $origin,
+                'destination' => $destination,
+            ];
+        }
+
         $globalEnabled = filter_var(env('TSA_GLOBAL_TICKETING_ENABLED', false), FILTER_VALIDATE_BOOL);
 
         return [
