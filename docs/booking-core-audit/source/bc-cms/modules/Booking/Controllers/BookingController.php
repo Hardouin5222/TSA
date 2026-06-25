@@ -150,7 +150,19 @@ class BookingController extends \App\Http\Controllers\Controller
             abort(404);
         }
         if (!is_enable_guest_checkout() and $booking->customer_id != Auth::id()) {
-            abort(404);
+            $canClaimSupplierFlightBooking =
+                Auth::check()
+                && empty($booking->customer_id)
+                && $booking->object_model === 'tsa_supplier_flight'
+                && in_array($booking->status, ['draft', 'unpaid'], true)
+                && $booking->getMeta('tsa_supplier_quote_uuid');
+
+            if ($canClaimSupplierFlightBooking) {
+                $booking->customer_id = Auth::id();
+                $booking->save();
+            } else {
+                abort(404);
+            }
         }
         return true;
     }
