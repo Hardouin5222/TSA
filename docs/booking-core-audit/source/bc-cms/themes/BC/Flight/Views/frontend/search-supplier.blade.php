@@ -145,6 +145,7 @@
         .tsa-modal-section ul{margin:0;padding:0;list-style:none}
         .tsa-modal-section li{margin-bottom:9px;font-size:15px;color:#566861}
         .tsa-modal-price{font-size:18px;font-weight:900;color:#162b24;margin-top:20px}
+        .tsa-modal-delta{font-size:13px;font-weight:700;color:#6b7d76;margin-top:4px}
         .tsa-modal-footer{display:flex;align-items:center;justify-content:space-between;gap:18px;margin-top:18px}
         .tsa-modal-selection{font-size:16px;color:#4f625b}
         .tsa-modal-selection strong{display:block;font-size:24px;color:#162b24}
@@ -404,7 +405,15 @@
                                                         @endforelse
                                                     </ul>
                                                 </div>
-                                                <div class="tsa-modal-price">{{ $fareOption['delta_label'] }}</div>
+                                                @php
+                                                    $fareTotalLabel = $fareOption['total_price_label'] ?? $offer['display_price'];
+                                                    $fareDeltaLabel = $fareOption['delta_label'] ?? null;
+                                                    $zeroDeltaLabels = ['$0', '$0.00', '€0', '€0.00', '₺0', '₺0.00', '0'];
+                                                @endphp
+                                                <div class="tsa-modal-price">{{ $fareTotalLabel }}</div>
+                                                @if(!empty($fareDeltaLabel) && !in_array($fareDeltaLabel, $zeroDeltaLabels, true))
+                                                    <div class="tsa-modal-delta">{{ __('Fiyat farki') }}: {{ $fareDeltaLabel }}</div>
+                                                @endif
                                                 <form method="POST" action="{{ route('flight.supplier.quote') }}" style="margin-top:18px">
                                                     @csrf
                                                     @foreach ($queryState as $key => $value)
