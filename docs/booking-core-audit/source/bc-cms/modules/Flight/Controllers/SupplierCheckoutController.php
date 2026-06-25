@@ -155,7 +155,7 @@ class SupplierCheckoutController extends Controller
             $supplierQuoteReference = Arr::get($quoteResponse, 'quote_id')
                 ?: Arr::get($quoteResponse, 'quote_uuid');
 
-            $quoteUuid = 'tsa_quote_' . Str::uuid();
+            $quoteUuid = (string) Str::uuid();
 
 
 
