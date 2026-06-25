@@ -55,6 +55,40 @@ class ProcessSupplierTicketing implements ShouldQueue
             return;
         }
 
+        $duffelSandboxAutoBook = filter_var(env('TSA_DUFFEL_SANDBOX_AUTO_BOOK', false), FILTER_VALIDATE_BOOL);
+
+        if (strtoupper((string) $supplierBooking->supplier_code) === 'DUFFEL_SANDBOX' && !$duffelSandboxAutoBook) {
+            $supplierBooking->payment_status = 'payment_paid';
+            $supplierBooking->fulfillment_status = 'manual_review_required';
+            $supplierBooking->manual_review_required = true;
+            $supplierBooking->save();
+
+            $booking->status = Booking::PROCESSING;
+            $booking->addMeta('tsa_fulfillment_status', 'manual_review_required');
+            $booking->save();
+
+            $this->log(
+                $booking,
+                $quote,
+                'book',
+                'pending',
+                'DUFFEL_SANDBOX_AUTO_BOOK_DISABLED',
+                [
+                    'booking_reference' => $booking->code,
+                    'quote_id' => $quote->quote_uuid,
+                    'supplier_code' => $supplierBooking->supplier_code,
+                ],
+                [
+                    'message' => 'Duffel sandbox auto-book is disabled. Booking requires manual review after payment.',
+                    'next_step' => 'Implement Duffel order creation or enable TSA_DUFFEL_SANDBOX_AUTO_BOOK.',
+                ],
+                0,
+                (string) Str::uuid()
+            );
+
+            return;
+        }
+
         $payload = [
             'quote_id' => $quote->quote_uuid,
             'booking_reference' => $booking->code,
