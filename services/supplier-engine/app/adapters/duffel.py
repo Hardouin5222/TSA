@@ -7,6 +7,7 @@ from datetime import datetime, timezone
 from typing import Any, Dict, List
 from urllib import request as urllib_request
 from urllib.error import HTTPError, URLError
+from urllib.parse import urlencode
 from uuid import uuid4
 
 from .base import FlightSupplierAdapter
@@ -63,12 +64,131 @@ class DuffelFlightAdapter(FlightSupplierAdapter):
         }
 
     def quote(self, payload: Dict[str, Any]) -> Dict[str, Any]:
-        raise SupplierAdapterError(
-            "DUFFEL_SANDBOX quote is not implemented yet",
-            error_code="SUPPLIER_METHOD_NOT_IMPLEMENTED",
-            status_code=501,
-            details={"supplier_code": self.code, "next_step": "Implement Duffel offer retrieval / quote validation"},
+        supplier_context = dict(payload.get("supplier_context") or {})
+        offer_snapshot = dict(payload.get("offer") or {})
+        selected_fare = dict(payload.get("selected_fare") or {})
+
+        offer_id = str(
+            payload.get("offer_id")
+            or supplier_context.get("raw_offer_id")
+            or offer_snapshot.get("supplier_offer_id")
+            or offer_snapshot.get("offer_id")
+            or offer_snapshot.get("id")
+            or ""
+        ).strip()
+
+        selected_fare_id = str(
+            payload.get("selected_fare_id")
+            or selected_fare.get("id")
+            or selected_fare.get("fare_id")
+            or ""
+        ).strip()
+
+        if not offer_id or not selected_fare_id:
+            raise SupplierValidationError(
+                "offer_id and selected_fare_id are required for Duffel quote",
+                {
+                    "missing_fields": [
+                        field
+                        for field, value in {
+                            "offer_id": offer_id,
+                            "selected_fare_id": selected_fare_id,
+                        }.items()
+                        if not value
+                    ],
+                },
+            )
+
+        latest_offer = self._get(
+            f"/offers/{offer_id}",
+            {"return_available_services": "false"},
+        ).get("data") or {}
+
+        if not latest_offer:
+            raise SupplierAdapterError(
+                "Duffel offer could not be retrieved",
+                error_code="DUFFEL_OFFER_NOT_FOUND",
+                status_code=422,
+                details={"supplier_code": self.code, "offer_id": offer_id},
+            )
+
+        amount = self._safe_float(
+            latest_offer.get("total_amount")
+            or selected_fare.get("total_amount")
+            or selected_fare.get("price")
+            or offer_snapshot.get("total_amount")
+            or offer_snapshot.get("price")
         )
+
+        currency = str(
+            latest_offer.get("total_currency")
+            or selected_fare.get("currency")
+            or offer_snapshot.get("currency")
+            or "USD"
+        ).upper()
+
+        previous_amount = self._safe_float(
+            selected_fare.get("total_amount")
+            or selected_fare.get("price")
+            or offer_snapshot.get("total_amount")
+            or offer_snapshot.get("price")
+        )
+
+        price_changed = previous_amount > 0 and round(previous_amount, 2) != round(amount, 2)
+
+        expires_at = latest_offer.get("expires_at") or offer_snapshot.get("expires_at")
+
+        supplier_context.update(
+            {
+                "supplier_code": self.code,
+                "raw_offer_id": offer_id,
+                "pricing_token": offer_id,
+                "quote_reference": offer_id,
+                "expires_at": expires_at,
+                "quote_validated_at": datetime.now(timezone.utc).isoformat(),
+            }
+        )
+
+        normalized_latest_offer = self._normalize_offer(
+            latest_offer,
+            offer_snapshot,
+            {"id": supplier_context.get("offer_request_id")},
+        )
+
+        return {
+            "quote_id": f"duffel_quote_{offer_id}",
+            "quote_uuid": f"duffel_quote_{offer_id}",
+            "offer_id": offer_id,
+            "selected_fare_id": selected_fare_id,
+            "supplier_code": self.code,
+            "confirmed_price": {
+                "amount": amount,
+                "currency": currency,
+            },
+            "confirmed_total_amount": amount,
+            "currency": currency,
+            "price_changed": price_changed,
+            "expires_at": expires_at,
+            "booking_requirements": self._quote_requirements(latest_offer),
+            "checkout_fields": {
+                "passport_required": True,
+                "birth_date_required": True,
+                "gender_required": True,
+                "nationality_required": True,
+            },
+            "rules": {
+                "refund": "Duffel offer conditions must be checked before ticketing.",
+                "change": "Duffel offer conditions must be checked before ticketing.",
+            },
+            "supplier_context": supplier_context,
+            "latest_offer": normalized_latest_offer,
+            "status": "quoted",
+            "raw": {
+                "mode": "duffel_sandbox",
+                "offer_id": offer_id,
+                "latest_offer": latest_offer,
+            },
+        }
 
     def book(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         raise SupplierAdapterError(
@@ -158,6 +278,51 @@ class DuffelFlightAdapter(FlightSupplierAdapter):
 
         return aliases.get(raw, "economy")
 
+    def _get(self, path: str, query: Dict[str, str] | None = None) -> Dict[str, Any]:
+        token = self._token()
+        url = self.base_url + path
+
+        if query:
+            url += "?" + urlencode(query)
+
+        req = urllib_request.Request(
+            url,
+            method="GET",
+            headers={
+                "Authorization": f"Bearer {token}",
+                "Duffel-Version": self.version,
+                "Accept": "application/json",
+            },
+        )
+
+        try:
+            with urllib_request.urlopen(req, timeout=self.timeout) as response:
+                raw_body = response.read().decode("utf-8")
+                return json.loads(raw_body or "{}")
+        except HTTPError as exc:
+            raw_body = exc.read().decode("utf-8", errors="replace")
+            parsed = self._parse_error_body(raw_body)
+            raise SupplierAdapterError(
+                "Duffel API request failed",
+                error_code=self._extract_duffel_error_code(parsed),
+                status_code=502 if exc.code >= 500 else 422,
+                details={
+                    "supplier_code": self.code,
+                    "http_status": exc.code,
+                    "response": parsed,
+                },
+            ) from exc
+        except URLError as exc:
+            raise SupplierAdapterError(
+                "Duffel API connection failed",
+                error_code="SUPPLIER_CONNECTION_FAILED",
+                status_code=502,
+                details={
+                    "supplier_code": self.code,
+                    "reason": str(exc.reason),
+                },
+            ) from exc
+
     def _post(self, path: str, payload: Dict[str, Any]) -> Dict[str, Any]:
         token = self._token()
         body = json.dumps(payload).encode("utf-8")
@@ -227,6 +392,29 @@ class DuffelFlightAdapter(FlightSupplierAdapter):
             )
 
         return token
+
+    def _quote_requirements(self, offer: Dict[str, Any]) -> Dict[str, Any]:
+        return {
+            "contact": {
+                "email": True,
+                "phone": True,
+            },
+            "traveller": {
+                "first_name": True,
+                "last_name": True,
+                "birth_date": True,
+                "gender": True,
+                "nationality": True,
+                "passport_number": True,
+                "passport_expiry": True,
+            },
+        }
+
+    def _safe_float(self, value: Any) -> float:
+        try:
+            return round(float(value or 0), 2)
+        except (TypeError, ValueError):
+            return 0.0
 
     def _parse_error_body(self, raw_body: str) -> Dict[str, Any]:
         try:
