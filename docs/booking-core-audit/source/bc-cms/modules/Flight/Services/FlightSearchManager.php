@@ -161,7 +161,13 @@ class FlightSearchManager
     protected function transformSupplierOffer(array $offer, array $criteria): array
     {
         $offerId = (string) (Arr::get($offer, 'offer_id') ?: Arr::get($offer, 'id') ?: Arr::get($offer, 'template_id') ?: Str::uuid());
-        $supplierCode = (string) (Arr::get($offer, 'supplier') ?: Arr::get($offer, 'provider') ?: Arr::get($offer, 'supplier_context.supplier_code') ?: 'supplier');
+        $supplierCode = (string) (
+            Arr::get($offer, 'supplier_code')
+            ?: Arr::get($offer, 'supplier')
+            ?: Arr::get($offer, 'provider')
+            ?: Arr::get($offer, 'supplier_context.supplier_code')
+            ?: 'supplier'
+        );
 
         $origin = $this->airportCode(Arr::get($offer, 'origin')) ?: $this->airportCode(Arr::get($offer, 'origin.code')) ?: $criteria['origin'];
         $destination = $this->airportCode(Arr::get($offer, 'destination')) ?: $this->airportCode(Arr::get($offer, 'destination.code')) ?: $criteria['destination'];
@@ -199,6 +205,30 @@ class FlightSearchManager
         $payload['offer_id'] = Arr::get($payload, 'offer_id') ?: $offerId;
         $payload['id'] = Arr::get($payload, 'id') ?: $offerId;
         $payload['supplier'] = Arr::get($payload, 'supplier') ?: $supplierCode;
+        $payload['supplier_code'] = Arr::get($payload, 'supplier_code') ?: $supplierCode;
+        $payload['provider'] = Arr::get($payload, 'provider') ?: $supplierCode;
+
+        $normalizedAmount = Arr::get($offer, 'total_amount')
+            ?: Arr::get($offer, 'amount')
+            ?: Arr::get($offer, 'price.amount')
+            ?: Arr::get($offer, 'price')
+            ?: Arr::get($selectedFare, 'total_amount')
+            ?: Arr::get($selectedFare, 'amount')
+            ?: Arr::get($selectedFare, 'price')
+            ?: 0;
+
+        $normalizedCurrency = Arr::get($offer, 'currency')
+            ?: Arr::get($offer, 'price.currency')
+            ?: Arr::get($selectedFare, 'currency')
+            ?: Arr::get($criteria, 'currency')
+            ?: 'USD';
+
+        $payload['total_amount'] = (float) $normalizedAmount;
+        $payload['amount'] = (float) $normalizedAmount;
+        $payload['price'] = (float) $normalizedAmount;
+        $payload['currency'] = $normalizedCurrency;
+        $payload['display_price'] = Arr::get($payload, 'display_price') ?: $this->money((float) $normalizedAmount, $normalizedCurrency);
+        $payload['money'] = Arr::get($payload, 'money') ?: $this->money((float) $normalizedAmount, $normalizedCurrency);
         $payload['supplier_context'] = Arr::get($payload, 'supplier_context', [
             'supplier_code' => $supplierCode,
             'raw_offer_id' => Arr::get($offer, 'supplier_offer_id') ?: $offerId,
@@ -212,8 +242,13 @@ class FlightSearchManager
             'supplier_offer_id' => Arr::get($offer, 'supplier_offer_id') ?: Arr::get($offer, 'raw_offer_id') ?: $offerId,
             'provider' => $supplierCode,
             'supplier' => $supplierCode,
+            'supplier_code' => $supplierCode,
             'supplier_context' => Arr::get($payload, 'supplier_context'),
             'payload' => $payload,
+            'total_amount' => (float) $normalizedAmount,
+            'amount' => (float) $normalizedAmount,
+            'price' => (float) $normalizedAmount,
+            'money' => $this->money((float) $normalizedAmount, $normalizedCurrency),
             'airline_name' => $airlineName,
             'airline_code' => $airlineCode,
             'airline_initials' => Str::upper(substr($airlineCode ?: $airlineName, 0, 2)),
@@ -232,8 +267,8 @@ class FlightSearchManager
             'stop_label' => $stopCount === 0 ? __('Direkt Ucus') : __(':count aktarma', ['count' => $stopCount]),
             'base_price' => $basePrice,
             'base_price_label' => $this->money($basePrice, $currency),
-            'price_currency' => $currency,
-            'currency' => $currency,
+            'price_currency' => $normalizedCurrency,
+            'currency' => $normalizedCurrency,
             'fare_family' => Arr::get($offer, 'fare_family') ?: Arr::get($selectedFare, 'label') ?: __('Standart'),
             'baggage_summary' => Arr::get($offer, 'baggage_summary') ?: Arr::get($offer, 'baggage.checked') ?: null,
             'cancellation_policy' => Arr::get($offer, 'rules.cancellation') ?: Arr::get($offer, 'cancellation_policy'),
