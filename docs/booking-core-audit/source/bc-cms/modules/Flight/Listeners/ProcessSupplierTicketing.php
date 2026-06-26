@@ -45,13 +45,33 @@ class ProcessSupplierTicketing implements ShouldQueue
         }
 
         $quote = SupplierQuote::find($supplierBooking->quote_id);
-        if (!$quote || $quote->isExpired()) {
+        if (!$quote || ($quote->expires_at && $quote->expires_at->isPast())) {
             $supplierBooking->payment_status = 'payment_paid';
             $supplierBooking->fulfillment_status = 'manual_review_required';
             $supplierBooking->manual_review_required = true;
             $supplierBooking->save();
+
+            $booking->status = Booking::PROCESSING;
             $booking->addMeta('tsa_fulfillment_status', 'manual_review_required');
-            $this->log($booking, $quote, 'book', 'failed', 'QUOTE_EXPIRED', [], []);
+            $booking->save();
+
+            $this->log(
+                $booking,
+                $quote,
+                'book',
+                'failed',
+                'QUOTE_EXPIRED',
+                [
+                    'booking_reference' => $booking->code,
+                    'quote_id' => optional($quote)->quote_uuid,
+                    'supplier_code' => $supplierBooking->supplier_code,
+                ],
+                [
+                    'message' => 'Supplier quote expired after payment confirmation. Booking requires manual review.',
+                    'next_step' => 'Create a fresh quote or complete supplier booking manually.',
+                ]
+            );
+
             return;
         }
 
