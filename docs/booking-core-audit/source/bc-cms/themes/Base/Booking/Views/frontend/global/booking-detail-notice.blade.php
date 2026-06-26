@@ -68,7 +68,7 @@ if ($isSupplierFlight) {
                 @if(!empty($noticeLine3))
                     <div class="line2">{{ $noticeLine3 }}</div>
                 @endif
-                @if($note = $gateway->getOption("payment_note"))
+                @if(!empty($gateway) && ($note = $gateway->getOption("payment_note")))
                     <div class="line2">{!! clean($note) !!}</div>
                 @endif
             </div>
