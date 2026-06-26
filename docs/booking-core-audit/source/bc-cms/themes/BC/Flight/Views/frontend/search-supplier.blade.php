@@ -40,6 +40,28 @@
         'child_count' => $criteria['child_count'] ?? 0,
         'sort' => $criteria['sort'] ?? 'recommended',
     ];
+
+    $airportLabel = function ($code) {
+        $code = strtoupper(trim((string) $code));
+
+        if (!$code) {
+            return '';
+        }
+
+        $airport = \Modules\Flight\Models\Airport::query()
+            ->where('code', $code)
+            ->first();
+
+        if (!$airport) {
+            return $code;
+        }
+
+        return trim($code . ' · ' . $airport->name);
+    };
+
+    $originDisplay = $airportLabel($criteria['origin'] ?? '');
+    $destinationDisplay = $airportLabel($criteria['destination'] ?? '');
+    $airportSearchUrl = route('flight.airport.search', [], false);
 @endphp
 
 @push('css')
@@ -187,16 +209,34 @@
             </div>
 
             <form class="tsa-flight-panel tsa-search-strip" method="GET" action="{{ $routeName }}">
-                <div class="tsa-search-field">
-                    <label>{{ __('Nereden') }}</label>
-                    <input type="text" name="origin" value="{{ $criteria['origin'] }}" maxlength="3">
-                    <small>{{ __('IATA kodu veya sehir') }}</small>
-                </div>
-                <div class="tsa-search-field">
-                    <label>{{ __('Nereye') }}</label>
-                    <input type="text" name="destination" value="{{ $criteria['destination'] }}" maxlength="3">
-                    <small>{{ __('Destinasyon secimi') }}</small>
-                </div>
+                  <div class="tsa-search-field tsa-search-field--airport" data-airport-picker>
+                      <label>{{ __('Nereden') }}</label>
+                      <input type="text"
+                             class="tsa-airport-input"
+                             value="{{ $originDisplay }}"
+                             placeholder="{{ __('Şehir veya havaalanı yazın') }}"
+                             autocomplete="off"
+                             data-airport-url="{{ $airportSearchUrl }}"
+                             data-airport-role="origin">
+                      <input type="hidden" name="origin" class="tsa-airport-value" value="{{ $criteria['origin'] }}">
+                      <span class="tsa-airport-caret">⌄</span>
+                      <div class="tsa-airport-dropdown"></div>
+                      <small>{{ __('Örnek: Istanbul, IST, Sabiha') }}</small>
+                  </div>
+                  <div class="tsa-search-field tsa-search-field--airport" data-airport-picker>
+                      <label>{{ __('Nereye') }}</label>
+                      <input type="text"
+                             class="tsa-airport-input"
+                             value="{{ $destinationDisplay }}"
+                             placeholder="{{ __('Şehir veya havaalanı yazın') }}"
+                             autocomplete="off"
+                             data-airport-url="{{ $airportSearchUrl }}"
+                             data-airport-role="destination">
+                      <input type="hidden" name="destination" class="tsa-airport-value" value="{{ $criteria['destination'] }}">
+                      <span class="tsa-airport-caret">⌄</span>
+                      <div class="tsa-airport-dropdown"></div>
+                      <small>{{ __('Örnek: London, LHR, JFK') }}</small>
+                  </div>
                 <div class="tsa-search-field">
                     <label>{{ __('Gidis') }}</label>
                     <input type="date" name="departure_date" value="{{ $criteria['departure_date'] }}">
@@ -512,4 +552,178 @@
             });
         });
     </script>
+@endpush
+
+
+@push('css')
+<style id="tsa-supplier-airport-autocomplete-css">
+    .tsa-search-field--airport{position:relative}
+    .tsa-airport-input{padding-right:34px}
+    .tsa-airport-input.is-invalid{color:#b42318!important}
+    .tsa-airport-caret{position:absolute;right:16px;top:52px;color:#6d7d76;font-size:18px;pointer-events:none}
+    .tsa-airport-dropdown{display:none;position:absolute;left:14px;right:14px;top:calc(100% - 6px);background:#fff;border:1px solid #dbe7e1;border-radius:18px;box-shadow:0 22px 45px rgba(17,31,27,.18);z-index:9999;overflow:hidden;max-height:320px;overflow-y:auto}
+    .tsa-airport-dropdown.is-open{display:block}
+    .tsa-airport-item{display:flex;gap:12px;padding:13px 15px;cursor:pointer;border-bottom:1px solid #edf3f0;align-items:flex-start}
+    .tsa-airport-item:last-child{border-bottom:0}
+    .tsa-airport-item:hover{background:#f4faf7}
+    .tsa-airport-code{min-width:48px;padding:5px 8px;border-radius:10px;background:#eaf6f2;color:#0f766e;font-size:13px;font-weight:900;text-align:center}
+    .tsa-airport-title{display:block;font-size:15px;font-weight:800;color:#172b24;line-height:1.25}
+    .tsa-airport-desc{display:block;font-size:13px;color:#667870;margin-top:3px;line-height:1.25}
+    .tsa-airport-empty{padding:14px 15px;font-size:14px;color:#667870}
+</style>
+@endpush
+
+
+@push('js')
+<script>
+(function () {
+    if (window.__tsaSupplierAirportSearchLoaded) return;
+    window.__tsaSupplierAirportSearchLoaded = true;
+
+    function debounce(fn, delay) {
+        var timer = null;
+        return function () {
+            var self = this;
+            var args = arguments;
+            clearTimeout(timer);
+            timer = setTimeout(function () {
+                fn.apply(self, args);
+            }, delay || 220);
+        };
+    }
+
+    function escapeHtml(value) {
+        return String(value || '').replace(/[&<>"']/g, function (char) {
+            return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[char];
+        });
+    }
+
+    function getItems(payload) {
+        var items = payload && (payload.data || payload.results || []);
+        if (!Array.isArray(items)) items = Object.values(items || {});
+        return items;
+    }
+
+    function renderAirportDropdown(input, items) {
+        var picker = input.closest('[data-airport-picker]');
+        var dropdown = picker.querySelector('.tsa-airport-dropdown');
+        dropdown.innerHTML = '';
+
+        if (!items.length) {
+            dropdown.innerHTML = '<div class="tsa-airport-empty">Airport not found. Try IATA code or city name.</div>';
+            dropdown.classList.add('is-open');
+            return;
+        }
+
+        items.forEach(function (item) {
+            var code = String(item.code || item.id || '').toUpperCase();
+            var title = item.name || item.title || item.text || code;
+            var desc = item.address || item.desc || item.country || '';
+            var cleanTitle = title.replace(code + ' - ', '');
+            var display = code ? code + ' · ' + cleanTitle : cleanTitle;
+
+            var row = document.createElement('div');
+            row.className = 'tsa-airport-item';
+            row.innerHTML =
+                '<span class="tsa-airport-code">' + escapeHtml(code) + '</span>' +
+                '<span>' +
+                    '<span class="tsa-airport-title">' + escapeHtml(cleanTitle) + '</span>' +
+                    (desc ? '<span class="tsa-airport-desc">' + escapeHtml(desc) + '</span>' : '') +
+                '</span>';
+
+            row.addEventListener('mousedown', function (event) {
+                event.preventDefault();
+                input.value = display;
+                input.classList.remove('is-invalid');
+                picker.querySelector('.tsa-airport-value').value = code;
+                dropdown.classList.remove('is-open');
+            });
+
+            dropdown.appendChild(row);
+        });
+
+        dropdown.classList.add('is-open');
+    }
+
+    function fetchAirports(input, query, clearValue) {
+        var picker = input.closest('[data-airport-picker]');
+        var dropdown = picker.querySelector('.tsa-airport-dropdown');
+        var hidden = picker.querySelector('.tsa-airport-value');
+        var url = input.getAttribute('data-airport-url');
+
+        if (clearValue) {
+            hidden.value = '';
+            input.classList.remove('is-invalid');
+        }
+
+        dropdown.innerHTML = '<div class="tsa-airport-empty">Searching airports...</div>';
+        dropdown.classList.add('is-open');
+
+        fetch(url + '?search=' + encodeURIComponent(query || '') + '&_=' + Date.now(), {
+            headers: {'Accept': 'application/json'}
+        })
+        .then(function (response) { return response.json(); })
+        .then(function (payload) { renderAirportDropdown(input, getItems(payload)); })
+        .catch(function () {
+            dropdown.innerHTML = '<div class="tsa-airport-empty">Airport search could not be loaded.</div>';
+            dropdown.classList.add('is-open');
+        });
+    }
+
+    var searchAirports = debounce(function (input) {
+        fetchAirports(input, input.value.trim(), true);
+    }, 220);
+
+    document.addEventListener('input', function (event) {
+        if (!event.target.classList.contains('tsa-airport-input')) return;
+        searchAirports(event.target);
+    });
+
+    document.addEventListener('focusin', function (event) {
+        if (!event.target.classList.contains('tsa-airport-input')) return;
+        var picker = event.target.closest('[data-airport-picker]');
+        var hidden = picker.querySelector('.tsa-airport-value');
+        event.target.select();
+        fetchAirports(event.target, hidden.value || event.target.value.trim(), false);
+    });
+
+    document.addEventListener('click', function (event) {
+        document.querySelectorAll('.tsa-airport-dropdown.is-open').forEach(function (dropdown) {
+            if (!dropdown.closest('[data-airport-picker]').contains(event.target)) {
+                dropdown.classList.remove('is-open');
+            }
+        });
+    });
+
+    document.addEventListener('submit', function (event) {
+        var form = event.target;
+        if (!form.classList.contains('tsa-search-strip')) return;
+
+        var origin = form.querySelector('input[name="origin"]');
+        var destination = form.querySelector('input[name="destination"]');
+        var invalid = false;
+
+        [origin, destination].forEach(function (hidden) {
+            var picker = hidden.closest('[data-airport-picker]');
+            var input = picker.querySelector('.tsa-airport-input');
+
+            if (!hidden.value || hidden.value.length !== 3) {
+                input.classList.add('is-invalid');
+                invalid = true;
+            }
+        });
+
+        if (invalid) {
+            event.preventDefault();
+            alert('Please select origin and destination from the airport list.');
+            return;
+        }
+
+        if (origin.value === destination.value) {
+            event.preventDefault();
+            alert('Origin and destination cannot be the same airport.');
+        }
+    });
+})();
+</script>
 @endpush
