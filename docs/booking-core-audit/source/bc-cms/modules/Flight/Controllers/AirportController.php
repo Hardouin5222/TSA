@@ -95,16 +95,53 @@
                     ->orWhere('country', 'LIKE', $like);
             });
 
+            $majorCodes = [
+                'IST','SAW','ADB','ESB','AYT','LHR','JFK','CDG','ORY','DXB','FRA','AMS','DOH','MAD','BCN',
+                'FCO','MXP','MUC','ZRH','VIE','BRU','CPH','ARN','OSL','HEL','ATH','SKG','BEG','SOF','OTP',
+                'WAW','PRG','BUD','SVO','DME','LED','CAI','BEY','TLV','JED','RUH','AUH','SHJ','BKK','SIN',
+                'HKG','NRT','HND','ICN','PEK','PVG','SYD','MEL','YYZ','YUL','LAX','SFO','ORD','MIA','ATL',
+                'BOS','IAD','EWR'
+            ];
+
+            $majorCodesSql = implode(',', array_map(function ($code) {
+                return DB::getPdo()->quote($code);
+            }, $majorCodes));
+
+            // TSA major airport ranking: exact IATA > city/address exact > name starts > contains.
             $query->orderByRaw("
                 CASE
                     WHEN code = ? THEN 0
                     WHEN code LIKE ? THEN 1
-                    WHEN name LIKE ? THEN 2
-                    WHEN address LIKE ? THEN 3
-                    WHEN country LIKE ? THEN 4
-                    ELSE 5
+                    WHEN address = ? OR address LIKE ? THEN 2
+                    WHEN name LIKE ? THEN 3
+                    WHEN address LIKE ? THEN 4
+                    WHEN name LIKE ? THEN 5
+                    WHEN country LIKE ? THEN 6
+                    ELSE 7
                 END ASC
-            ", [strtoupper($s), strtoupper($s) . '%', $like, $like, $like]);
+            ", [
+                strtoupper($s),
+                strtoupper($s) . '%',
+                $s,
+                $s . ',%',
+                $s . '%',
+                $like,
+                $like,
+                $like
+            ]);
+
+            $query->orderByRaw("
+                CASE
+                    WHEN name LIKE '%International Airport%' THEN 0
+                    WHEN name LIKE '%Airport%' THEN 1
+                    WHEN name LIKE '%Heliport%' THEN 7
+                    WHEN name LIKE '%Air Base%' THEN 8
+                    WHEN name LIKE '%SPB%' THEN 9
+                    ELSE 3
+                END ASC
+            ");
+
+            $query->orderByRaw("CASE WHEN FIELD(code, {$majorCodesSql}) = 0 THEN 9999 ELSE FIELD(code, {$majorCodesSql}) END ASC");
         }
 
         $items = $query

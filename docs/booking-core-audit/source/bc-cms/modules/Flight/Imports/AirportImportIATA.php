@@ -21,13 +21,13 @@ class AirportImportIATA implements WithChunkReading,ToModel,ShouldQueue,WithHead
     public function model(array $row)
     {
         $data = [
-            'name' => $row['name'],
+            'name' => $this->fixAirportText((string) $row['name']),
             'code' => $row['iata_code'],
             'map_lat' => $row['latitude_deg'],
             'map_lng' => $row['longitude_deg'],
-            'address' => $row['municipality'],
+            'address' => $this->fixAirportText((string) $row['municipality']),
             'country'=>$row['iso_country'],
-            'status'=>'draft'
+            'status'=>'publish'
         ];
         $a =  new Airport();
         $a->fillByAttr(array_keys($data),$data);
@@ -47,6 +47,27 @@ class AirportImportIATA implements WithChunkReading,ToModel,ShouldQueue,WithHead
     public function uniqueBy()
     {
         return 'code';
+    }
+
+    protected function fixAirportText(string $value): string
+    {
+        $value = trim($value);
+
+        if ($value === '') {
+            return $value;
+        }
+
+        if (!preg_match('/[Γ├┬]/u', $value)) {
+            return $value;
+        }
+
+        $fixed = @iconv('UTF-8', 'CP437//IGNORE', $value);
+
+        if (is_string($fixed) && $fixed !== '' && mb_check_encoding($fixed, 'UTF-8')) {
+            return $fixed;
+        }
+
+        return $value;
     }
 
     public function batchSize(): int
