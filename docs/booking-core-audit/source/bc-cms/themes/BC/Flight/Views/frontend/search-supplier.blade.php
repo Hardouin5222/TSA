@@ -31,6 +31,22 @@
         'body' => __('Our support team can help you complete your booking.'),
     ];
 
+    $supplierModeForUi = strtoupper((string) config('flight.supplier_engine_mode', env('TSA_SUPPLIER_ENGINE_MODE', '')));
+    $isSandboxSearch = str_contains($supplierModeForUi, 'SANDBOX')
+        || $offers->contains(function ($offer) {
+            $provider = strtoupper((string) ($offer['provider'] ?? $offer['supplier_code'] ?? $offer['supplier'] ?? ''));
+            $airline = strtolower((string) ($offer['airline_name'] ?? ''));
+
+            return str_contains($provider, 'SANDBOX') || str_contains($airline, 'duffel airways');
+        });
+
+    if ($isSandboxSearch) {
+        $supportCard = [
+            'title' => __('Test ortamı aktif'),
+            'body' => __('Bu ekrandaki uçuş ve fiyatlar canlı satış verisi değildir. Gerçek fiyat için canlı supplier bağlantısı gerekir.'),
+        ];
+    }
+
     $queryState = [
         'origin' => $criteria['origin'] ?? '',
         'destination' => $criteria['destination'] ?? '',
@@ -62,6 +78,97 @@
     $originDisplay = $airportLabel($criteria['origin'] ?? '');
     $destinationDisplay = $airportLabel($criteria['destination'] ?? '');
     $airportSearchUrl = route('flight.airport.search', [], false);
+
+    $humanFare = function ($label) {
+        $label = trim((string) $label);
+
+        return match (strtolower($label)) {
+            'standard' => __('Standart'),
+            'basic' => __('Ekonomik'),
+            'flex' => __('Esnek'),
+            'premium' => __('Premium'),
+            default => $label ?: __('Standart'),
+        };
+    };
+
+    $humanFeature = function ($feature) use ($isSandboxSearch) {
+        $feature = trim((string) $feature);
+        $key = strtolower($feature);
+
+        return match ($key) {
+            'duffel live availability' => $isSandboxSearch ? __('Sandbox müsaitlik') : __('Canlı müsaitlik'),
+            'quote required before payment' => __('Ödeme öncesi fiyat doğrulama'),
+            'direct' => __('Direkt uçuş'),
+            default => $feature,
+        };
+    };
+
+    $airportCountry = function ($code) {
+        $code = strtoupper(trim((string) $code));
+
+        if (!$code) {
+            return null;
+        }
+
+        return \Modules\Flight\Models\Airport::query()
+            ->where('code', $code)
+            ->value('country');
+    };
+
+    $originCountry = strtoupper((string) $airportCountry($criteria['origin'] ?? ''));
+    $destinationCountry = strtoupper((string) $airportCountry($criteria['destination'] ?? ''));
+    $isTurkeyDomestic = $originCountry === 'TR' && $destinationCountry === 'TR';
+
+    $uiCurrency = $isTurkeyDomestic ? 'TRY' : strtoupper((string)($criteria['currency'] ?? ''));
+    $uiCurrency = $uiCurrency ?: null;
+
+    $uiMoney = function ($amount, $currency = null) use ($isTurkeyDomestic) {
+        $amount = (float) $amount;
+        $currency = strtoupper((string) ($currency ?: 'USD'));
+
+        // Display-only conversion for Turkey domestic routes while live supplier sandbox may return USD.
+        // Booking/quote/payment still keeps the supplier-confirmed amount/currency.
+        if ($isTurkeyDomestic && $currency !== 'TRY') {
+            $amount = $amount * 33;
+            $currency = 'TRY';
+        }
+
+        $symbol = match ($currency) {
+            'TRY' => '₺',
+            'EUR' => '€',
+            'GBP' => '£',
+            'RUB' => '₽',
+            default => '$',
+        };
+
+        return $symbol . number_format($amount, 0, ',', '.');
+    };
+
+    $offerUiPrice = function ($offer) use ($uiMoney) {
+        return $uiMoney(
+            $offer['total_amount'] ?? $offer['amount'] ?? 0,
+            $offer['currency'] ?? $offer['price_currency'] ?? 'USD'
+        );
+    };
+
+    $fareUiPrice = function ($fareOption, $offer) use ($uiMoney) {
+        return $uiMoney(
+            $fareOption['total_amount'] ?? $fareOption['price'] ?? $offer['total_amount'] ?? 0,
+            $fareOption['currency'] ?? $offer['currency'] ?? $offer['price_currency'] ?? 'USD'
+        );
+    };
+
+    $airlineDisplayName = function ($offer) use ($isSandboxSearch) {
+        $name = trim((string) ($offer['airline_name'] ?? __('Havayolu')));
+
+        if ($isSandboxSearch && strtolower($name) === 'duffel airways') {
+            return __('Duffel Airways') . ' (' . __('test') . ')';
+        }
+
+        return $name;
+    };
+
+    $priceModeLabel = $isSandboxSearch ? __('Test fiyatı') : __('Canlı fiyat');
 @endphp
 
 @push('css')
@@ -208,6 +315,13 @@
                 </div>
             </div>
 
+            @if($isSandboxSearch)
+                <div class="tsa-sandbox-warning">
+                    <strong>{{ __('Test ortamı') }}</strong>
+                    <span>{{ __('Bu ekrandaki uçuş ve fiyat gerçek satışa açık canlı veri değildir. Supplier sandbox test cevabıdır.') }}</span>
+                </div>
+            @endif
+
             <form class="tsa-flight-panel tsa-search-strip" method="GET" action="{{ $routeName }}">
                   <div class="tsa-search-field tsa-search-field--airport" data-airport-picker>
                       <label>{{ __('Nereden') }}</label>
@@ -216,6 +330,9 @@
                              value="{{ $originDisplay }}"
                              placeholder="{{ __('Şehir veya havaalanı yazın') }}"
                              autocomplete="off"
+                             spellcheck="false"
+                             autocorrect="off"
+                             autocapitalize="characters"
                              data-airport-url="{{ $airportSearchUrl }}"
                              data-airport-role="origin">
                       <input type="hidden" name="origin" class="tsa-airport-value" value="{{ $criteria['origin'] }}">
@@ -230,6 +347,9 @@
                              value="{{ $destinationDisplay }}"
                              placeholder="{{ __('Şehir veya havaalanı yazın') }}"
                              autocomplete="off"
+                             spellcheck="false"
+                             autocorrect="off"
+                             autocapitalize="characters"
                              data-airport-url="{{ $airportSearchUrl }}"
                              data-airport-role="destination">
                       <input type="hidden" name="destination" class="tsa-airport-value" value="{{ $criteria['destination'] }}">
@@ -238,14 +358,14 @@
                       <small>{{ __('Örnek: London, LHR, JFK') }}</small>
                   </div>
                 <div class="tsa-search-field">
-                    <label>{{ __('Gidis') }}</label>
+                    <label>{{ __('Gidiş') }}</label>
                     <input type="date" name="departure_date" value="{{ $criteria['departure_date'] }}">
-                    <small>{{ __('Satin alma niyeti yuksek tarih') }}</small>
+                    <small>{{ __('Gidiş tarihi') }}</small>
                 </div>
                 <div class="tsa-search-field">
-                    <label>{{ __('Donus') }}</label>
+                    <label>{{ __('Dönüş') }}</label>
                     <input type="date" name="return_date" value="{{ $criteria['return_date'] }}">
-                    <small>{{ __('Paket eslestirmesi icin onemli') }}</small>
+                    <small>{{ __('Opsiyonel dönüş tarihi') }}</small>
                 </div>
                 <div class="tsa-search-field">
                     <label>{{ __('Yolcu') }}</label>
@@ -254,15 +374,15 @@
                             <option value="{{ $adult }}" @selected($criteria['adult_count'] == $adult)>{{ $adult }} {{ __('yetiskin') }}</option>
                         @endfor
                     </select>
-                    <small>{{ __('3 tik akisi: ara, sec, satin al.') }}</small>
+                    <small>{{ __('Yolcu sayısı') }}</small>
                 </div>
-                <button class="tsa-search-submit" type="submit">{{ __('Ucuslari goster') }}</button>
+                <button class="tsa-search-submit" type="submit">{{ __('Uçuş ara') }}</button>
             </form>
 
             @if ($offers->isEmpty())
                 <div class="tsa-empty-card">
-                    <h2>{{ __('Bu rota icin teklif bulunamadi') }}</h2>
-                    <p>{{ __('Origin, destination veya supplier katalog eslesmesini kontrol edip tekrar deneyelim.') }}</p>
+                    <h2>{{ __('Bu rota için uygun uçuş bulunamadı') }}</h2>
+                    <p>{{ __('Havalimanı, tarih veya yolcu bilgisini değiştirerek tekrar arayın.') }}</p>
                 </div>
             @else
                 <div class="tsa-layout">
@@ -316,8 +436,8 @@
                             <div class="tsa-route">
                                 <div>{{ ($criteria['origin'] ?: '---') . ' → ' . ($criteria['destination'] ?: '---') }}</div>
                                 <div class="tsa-edit-links">
-                                    <span>{{ __('Aramayi duzenle') }}</span>
-                                    <span>{{ __('Gunluk fiyatlar') }}</span>
+                                    <span>{{ __('Aramayı düzenle') }}</span>
+                                    <span>{{ __('Günlük fiyatlar') }}</span>
                                 </div>
                             </div>
                             <div class="tsa-route-meta">
@@ -334,7 +454,7 @@
                         </div>
 
                         <div class="tsa-sort-tabs">
-                            @foreach (['recommended' => __('En ucuz'), 'duration' => __('En hizli'), 'departure' => __('Once aktarmasiz'), 'price' => __('Onerilen')] as $sortKey => $sortLabel)
+                            @foreach (['recommended' => __('Önerilen'), 'price' => __('En ucuz'), 'duration' => __('En hızlı'), 'departure' => __('Aktarmasız önce')] as $sortKey => $sortLabel)
                                 <form method="GET" action="{{ $routeName }}">
                                     @foreach ($queryState as $key => $value)
                                         @if ($key !== 'sort')
@@ -364,10 +484,10 @@
 
                                     <div class="tsa-airline-row">
                                         <div>
-                                            <h2 class="tsa-airline-name">{{ $offer['airline_name'] }}</h2>
-                                            <div class="tsa-airline-meta">{{ $offer['provider'] }} • {{ $offer['selected_fare']['label'] }}</div>
+                                            <h2 class="tsa-airline-name">{{ $airlineDisplayName($offer) }}</h2>
+                                            <div class="tsa-airline-meta">{{ $humanFare($offer['selected_fare']['label'] ?? '') }} • {{ $priceModeLabel }}</div>
                                         </div>
-                                        <div class="tsa-price-rail">{{ $offer['display_price'] }}</div>
+                                        <div class="tsa-price-rail">{{ $offerUiPrice($offer) }}</div>
                                     </div>
 
                                     <div class="tsa-timeline">
@@ -395,33 +515,37 @@
                                                 <span class="tsa-pill">{{ $offer['display_hand_baggage'] }}</span>
                                             @endif
                                             @foreach ($offer['display_features'] as $feature)
-                                                <span class="tsa-pill">{{ $feature }}</span>
+                                                <span class="tsa-pill">{{ $humanFeature($feature) }}</span>
                                             @endforeach
                                         </div>
                                         <div class="tsa-card-actions">
-                                            <button type="button" class="tsa-secondary-btn js-open-modal" data-modal-id="modal-{{ $offer['id'] }}">{{ __('Paketleri goster') }}</button>
-                                            <button type="button" class="tsa-primary-btn js-open-modal" data-modal-id="modal-{{ $offer['id'] }}">{{ __('Sec') }}</button>
+                                            <button type="button" class="tsa-secondary-btn js-open-modal" data-modal-id="modal-{{ $offer['id'] }}">{{ __('Paketleri incele') }}</button>
                                         </div>
                                     </div>
                                 </div>
                                 <div class="tsa-result-aside">
-                                    <div class="price">{{ $offer['display_price'] }}</div>
-                                    <div class="currency">{{ $offer['selected_fare']['label'] }} • {{ $offer['fare_family'] }}</div>
-                                    <button type="button" class="tsa-primary-btn js-open-modal" data-modal-id="modal-{{ $offer['id'] }}">{{ __('Sec') }}</button>
+                                    <div class="price">{{ $offerUiPrice($offer) }}</div>
+                                    <div class="currency">{{ $humanFare($offer['selected_fare']['label'] ?? '') }}</div>
+                                    @if($isTurkeyDomestic)
+                                        <div class="tsa-ui-currency-note">
+                                            {{ $isSandboxSearch ? __('Sandbox test fiyatı, satışa açık değildir') : __('Türkiye içi rota için TL gösteriliyor') }}
+                                        </div>
+                                    @endif
+                                    <button type="button" class="tsa-primary-btn js-open-modal" data-modal-id="modal-{{ $offer['id'] }}">{{ __('Seç ve devam et') }}</button>
                                 </div>
                             </article>
 
                             <div class="tsa-modal" id="modal-{{ $offer['id'] }}">
                                 <div class="tsa-modal-shell">
                                     <div class="tsa-modal-head">
-                                        <h3>{{ __('Gidis paketini secin') }}</h3>
+                                        <h3>{{ __('Uçuş paketini seçin') }}</h3>
                                         <button type="button" class="tsa-modal-close js-close-modal">×</button>
                                     </div>
                                     <div class="tsa-modal-grid">
                                         @foreach ($offer['fare_options'] as $fareOption)
                                             <div class="tsa-modal-card {{ $fareOption['is_selected'] ? 'is-selected' : '' }}">
                                                 <h4>
-                                                    <span>{{ $fareOption['label'] }}</span>
+                                                    <span>{{ $humanFare($fareOption['label'] ?? '') }}</span>
                                                     <span class="radio"></span>
                                                 </h4>
                                                 <div class="tsa-modal-section">
@@ -436,12 +560,12 @@
                                                     </ul>
                                                 </div>
                                                 <div class="tsa-modal-section">
-                                                    <strong>{{ __('Diger') }}</strong>
+                                                    <strong>{{ __('Paket özellikleri') }}</strong>
                                                     <ul>
                                                         @forelse ($fareOption['features'] as $feature)
-                                                            <li>{{ $feature }}</li>
+                                                            <li>{{ $humanFeature($feature) }}</li>
                                                         @empty
-                                                            <li>{{ __('Temel paket') }}</li>
+                                                            <li>{{ __('Standart paket') }}</li>
                                                         @endforelse
                                                     </ul>
                                                 </div>
@@ -450,9 +574,9 @@
                                                     $fareDeltaLabel = $fareOption['delta_label'] ?? null;
                                                     $zeroDeltaLabels = ['$0', '$0.00', '€0', '€0.00', '₺0', '₺0.00', '0'];
                                                 @endphp
-                                                <div class="tsa-modal-price">{{ $fareTotalLabel }}</div>
+                                                <div class="tsa-modal-price">{{ $fareUiPrice($fareOption, $offer) }}</div>
                                                 @if(!empty($fareDeltaLabel) && !in_array($fareDeltaLabel, $zeroDeltaLabels, true))
-                                                    <div class="tsa-modal-delta">{{ __('Fiyat farki') }}: {{ $fareDeltaLabel }}</div>
+                                                    <div class="tsa-modal-delta">{{ __('Fiyat farkı') }}: {{ $fareDeltaLabel }}</div>
                                                 @endif
                                                 <form method="POST" action="{{ route('flight.supplier.quote') }}" style="margin-top:18px">
                                                     @csrf
@@ -467,15 +591,15 @@
                                                     @endforeach
                                                     <input type="hidden" name="selected_offer" value="{{ $offer['id'] }}">
                                                     <input type="hidden" name="selected_fare" value="{{ $fareOption['id'] }}">
-                                                    <button type="submit" class="tsa-modal-submit" style="width:100%">{{ __('Fiyati dogrula ve checkout’a ilerle') }}</button>
+                                                    <button type="submit" class="tsa-modal-submit" style="width:100%">{{ __('Fiyatı doğrula ve devam et') }}</button>
                                                 </form>
                                             </div>
                                         @endforeach
                                     </div>
                                     <div class="tsa-modal-footer">
                                         <div class="tsa-modal-selection">
-                                            <strong>{{ $offer['airline_name'] }}</strong>
-                                            <span>{{ $offer['selected_fare']['label'] }} • {{ $offer['display_price'] }}</span>
+                                            <strong>{{ $airlineDisplayName($offer) }}</strong>
+                                            <span>{{ $humanFare($offer['selected_fare']['label'] ?? '') }} • {{ $offerUiPrice($offer) }}</span>
                                         </div>
                                         <button type="button" class="tsa-secondary-btn js-close-modal">{{ __('Kapat') }}</button>
                                     </div>
@@ -491,26 +615,26 @@
                     </aside>
                 </div>
 
-                @if ($selectedOfferData)
+                @if ($selectedOfferData && !empty($criteria['selected_offer']))
                     <div class="tsa-summary-card" style="margin-top:18px">
-                        <span class="tsa-badge">{{ __('Secili teklif') }}</span>
-                        <h3>{{ __('Karar ozeti') }}</h3>
+                        <span class="tsa-badge">{{ __('Seçili uçuş') }}</span>
+                        <h3>{{ __('Seçili uçuş özeti') }}</h3>
                         <div class="tsa-summary-body">
-                            <strong>{{ $selectedOfferData['airline_name'] }}</strong>
+                            <strong>{{ $airlineDisplayName($selectedOfferData) }}</strong>
                             <div>{{ $selectedOfferData['route_label'] }}</div>
                         </div>
                         <div class="tsa-summary-grid">
                             <div class="tsa-summary-box">
                                 <label>{{ __('Fiyat') }}</label>
-                                <strong>{{ $selectedOfferData['display_price'] }}</strong>
+                                <strong>{{ $offerUiPrice($selectedOfferData) }}</strong>
                             </div>
                             <div class="tsa-summary-box">
-                                <label>{{ __('Sure') }}</label>
+                                <label>{{ __('Süre') }}</label>
                                 <strong>{{ $selectedOfferData['duration_label'] }}</strong>
                             </div>
                             <div class="tsa-summary-box">
                                 <label>{{ __('Paket') }}</label>
-                                <strong>{{ $selectedOfferData['selected_fare']['label'] }}</strong>
+                                <strong>{{ $humanFare($selectedOfferData['selected_fare']['label'] ?? '') }}</strong>
                             </div>
                             <div class="tsa-summary-box">
                                 <label>{{ __('Bagaj') }}</label>
@@ -521,8 +645,8 @@
                             {{ __('Bu panel satin alma kararini destekler. Sonraki adimda secilen supplier paketini checkout koprusune baglayacagiz.') }}
                         </div>
                         <div class="tsa-summary-actions">
-                            <a href="#offer-{{ $selectedOfferData['id'] }}" class="tsa-primary-btn">{{ __('Paketi secildi olarak goster') }}</a>
-                            <a href="#support" class="tsa-secondary-btn">{{ __('Destek notu') }}</a>
+                            <a href="#offer-{{ $selectedOfferData['id'] }}" class="tsa-primary-btn">{{ __('Seçili uçuşa dön') }}</a>
+                            <a href="#support" class="tsa-secondary-btn">{{ __('Destek') }}</a>
                         </div>
                     </div>
                 @endif
@@ -726,4 +850,131 @@
     });
 })();
 </script>
+@endpush
+
+
+@push('css')
+<style id="tsa-results-ui-cleanup-css">
+    .tsa-search-strip{grid-template-columns:1.15fr 1.15fr .9fr .9fr .72fr .72fr}
+    .tsa-search-field{min-width:0}
+    .tsa-search-field input,
+    .tsa-search-field select{
+        font-size:21px!important;
+        line-height:1.2!important;
+        white-space:nowrap;
+        overflow:hidden;
+        text-overflow:ellipsis;
+    }
+    .tsa-search-field small{
+        min-height:18px;
+        white-space:nowrap;
+        overflow:hidden;
+        text-overflow:ellipsis;
+    }
+    .tsa-airport-dropdown{
+        min-width:420px;
+        width:max-content;
+        max-width:560px;
+    }
+    .tsa-airport-title{
+        max-width:420px;
+        word-break:normal;
+    }
+    .tsa-result-card{
+        grid-template-columns:minmax(0,1fr) 210px;
+    }
+    .tsa-airline-meta{
+        font-size:15px;
+        color:#64756e;
+    }
+    .tsa-card-actions .tsa-secondary-btn{
+        min-width:150px;
+    }
+    .tsa-result-aside .price{
+        font-size:40px;
+        line-height:1;
+    }
+    .tsa-result-aside .tsa-primary-btn{
+        font-size:20px;
+        white-space:nowrap;
+    }
+    .tsa-summary-card{
+        position:static;
+    }
+    @media (max-width:1280px){
+        .tsa-airport-dropdown{
+            min-width:320px;
+            max-width:calc(100vw - 48px);
+        }
+    }
+</style>
+@endpush
+
+
+@push('css')
+<style id="tsa-ui-currency-note-css">
+    .tsa-ui-currency-note{
+        margin-top:-10px;
+        font-size:12px;
+        line-height:1.35;
+        color:#6b7a73;
+        text-align:center;
+    }
+</style>
+@endpush
+
+
+@push('css')
+<style id="tsa-sandbox-warning-css">
+    .tsa-sandbox-warning{
+        display:flex;
+        gap:14px;
+        align-items:center;
+        padding:16px 20px;
+        margin-bottom:18px;
+        border:1px solid #f4c48a;
+        border-radius:22px;
+        background:#fff8ec;
+        color:#6d4608;
+        box-shadow:0 14px 32px rgba(120,80,20,.08);
+    }
+    .tsa-sandbox-warning strong{
+        padding:6px 10px;
+        border-radius:999px;
+        background:#f59e0b;
+        color:#fff;
+        white-space:nowrap;
+        font-size:13px;
+    }
+    .tsa-sandbox-warning span{
+        font-size:15px;
+        line-height:1.45;
+        font-weight:600;
+    }
+    .tsa-result-card{
+        grid-template-columns:minmax(0,1fr) 260px!important;
+    }
+    .tsa-result-aside{
+        padding:24px 20px!important;
+    }
+    .tsa-result-aside .tsa-primary-btn{
+        width:100%;
+        max-width:100%;
+        font-size:16px!important;
+        line-height:1.2;
+        padding:16px 12px!important;
+        text-align:center;
+        white-space:normal!important;
+    }
+    .tsa-result-aside .price{
+        font-size:38px!important;
+    }
+    .tsa-card-actions{
+        justify-content:flex-end;
+    }
+    .tsa-card-actions .tsa-secondary-btn{
+        padding:13px 16px;
+        white-space:nowrap;
+    }
+</style>
 @endpush

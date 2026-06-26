@@ -15,7 +15,7 @@
         if ($airport) {
             $code = strtoupper((string) $airport->code);
             $selected = $code ?: $airport->id;
-            $selectedTitle = trim(($code ? $code . ' - ' : '') . $airport->name);
+            $selectedTitle = trim(($code ? $code . ' · ' : '') . $airport->name);
         }
     }
 
@@ -32,6 +32,9 @@
                placeholder="{{ $placeholder ?? __('City or airport') }}"
                value="{{ $selectedTitle }}"
                autocomplete="off"
+               spellcheck="false"
+               autocorrect="off"
+               autocapitalize="characters"
                data-airport-url="{{ $airportSearchUrl }}">
 
         <input type="hidden"
@@ -53,7 +56,7 @@
         padding-left: 0 !important;
         background: transparent !important;
         box-shadow: none !important;
-        color: #5191fa !important;
+        color: #152b23 !important;
         cursor: text !important;
     }
 
@@ -62,12 +65,14 @@
         position: absolute;
         left: 0;
         top: 100%;
-        width: 260px;
-        max-height: 260px;
+        min-width: 380px;
+        width: min(460px, calc(100vw - 32px));
+        max-height: 340px;
         overflow-y: auto;
         background: #fff;
-        border: 1px solid #ddd;
-        box-shadow: 0 8px 20px rgba(0,0,0,.12);
+        border: 1px solid #dbe7e1;
+        border-radius: 18px;
+        box-shadow: 0 18px 45px rgba(15,50,34,.16);
         z-index: 99999;
         margin-top: 10px;
     }
@@ -85,12 +90,12 @@
     }
 
     .tsa-airport-item:hover {
-        background: #f5f8ff;
+        background: #f4faf7;
     }
 
     .tsa-airport-code {
         font-weight: 700;
-        color: #5191fa;
+        color: #0f766e;
         margin-right: 5px;
     }
 
@@ -127,6 +132,12 @@
         return items;
     }
 
+    function escapeAirportHtml(value) {
+        return String(value || '').replace(/[&<>"']/g, function (char) {
+            return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[char];
+        });
+    }
+
     function render(input, items) {
         var picker = input.closest('.tsa-airport-picker');
         var dropdown = picker.querySelector('.tsa-airport-dropdown');
@@ -134,28 +145,30 @@
         dropdown.innerHTML = '';
 
         if (!items.length) {
-            dropdown.innerHTML = '<div class="tsa-airport-empty">Airport not found</div>';
+            dropdown.innerHTML = '<div class="tsa-airport-empty">Havalimanı bulunamadı</div>';
             dropdown.style.display = 'block';
             return;
         }
 
         items.forEach(function (item) {
-            var code = item.code || item.id || '';
-            var title = item.title || item.text || item.name || code;
-            var desc = item.desc || item.address || item.country || '';
+            var code = String(item.code || item.id || '').toUpperCase();
+            var title = item.name || item.title || item.text || code;
+            var desc = item.address || item.desc || item.country || '';
+            var cleanTitle = String(title).replace(code + ' - ', '');
+            var display = code ? code + ' · ' + cleanTitle : cleanTitle;
 
             var row = document.createElement('div');
             row.className = 'tsa-airport-item';
             row.innerHTML =
-                '<span class="tsa-airport-code">' + String(code).toUpperCase() + '</span>' +
-                '<span>' + title.replace(String(code).toUpperCase() + ' - ', '') + '</span>' +
-                (desc ? '<span class="tsa-airport-desc">' + desc + '</span>' : '');
+                '<span class="tsa-airport-code">' + escapeAirportHtml(code) + '</span>' +
+                '<span>' + escapeAirportHtml(cleanTitle) + '</span>' +
+                (desc ? '<span class="tsa-airport-desc">' + escapeAirportHtml(desc) + '</span>' : '');
 
             row.addEventListener('mousedown', function (e) {
                 e.preventDefault();
 
-                input.value = title;
-                picker.querySelector('.tsa-airport-value').value = String(code).toUpperCase();
+                input.value = display;
+                picker.querySelector('.tsa-airport-value').value = code;
                 dropdown.style.display = 'none';
             });
 
@@ -174,7 +187,7 @@
             hidden.value = '';
         }
 
-        dropdown.innerHTML = '<div class="tsa-airport-empty">Loading...</div>';
+        dropdown.innerHTML = '<div class="tsa-airport-empty">Havalimanları aranıyor...</div>';
         dropdown.style.display = 'block';
 
         var url = input.getAttribute('data-airport-url') + '?search=' + encodeURIComponent(q || '') + '&_=' + Date.now();
@@ -191,7 +204,7 @@
             render(input, getItems(payload));
         })
         .catch(function () {
-            dropdown.innerHTML = '<div class="tsa-airport-empty">Airport search error</div>';
+            dropdown.innerHTML = '<div class="tsa-airport-empty">Havalimanı araması yüklenemedi</div>';
             dropdown.style.display = 'block';
         });
     }
