@@ -114,13 +114,16 @@ class SupplierWebhookController extends Controller
         $payment = $this->recordPaymentTransaction($booking, $provider, $request->all(), 'completed');
 
         if (in_array($supplierBooking->fulfillment_status, [
+            'payment_paid_ticketing_queued',
             'ticketing_in_progress',
             'booking_confirmed',
             'ticket_issued',
+            'manual_review_required',
         ], true)) {
             return $this->paymentWebhookResponse($provider, [
                 'ok' => true,
                 'idempotent' => true,
+                'fulfillment_status' => $supplierBooking->fulfillment_status,
             ]);
         }
 
