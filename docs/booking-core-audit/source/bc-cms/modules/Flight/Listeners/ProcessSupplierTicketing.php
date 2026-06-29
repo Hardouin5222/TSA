@@ -12,6 +12,7 @@ use Modules\Flight\Models\SupplierBooking;
 use Modules\Flight\Models\SupplierOperationLog;
 use Modules\Flight\Models\SupplierQuote;
 use Modules\Flight\Services\TsaSupplierBridgeClient;
+use Modules\Flight\Services\SupplierFlightNotificationService;
 
 class ProcessSupplierTicketing implements ShouldQueue
 {
@@ -21,10 +22,12 @@ class ProcessSupplierTicketing implements ShouldQueue
     public int $timeout = 120;
 
     protected TsaSupplierBridgeClient $bridgeClient;
+    protected SupplierFlightNotificationService $notificationService;
 
-    public function __construct(TsaSupplierBridgeClient $bridgeClient)
+    public function __construct(TsaSupplierBridgeClient $bridgeClient, SupplierFlightNotificationService $notificationService)
     {
         $this->bridgeClient = $bridgeClient;
+        $this->notificationService = $notificationService;
     }
 
     public function handle(SupplierPaymentConfirmed $event): void
@@ -72,6 +75,15 @@ class ProcessSupplierTicketing implements ShouldQueue
                 ]
             );
 
+            $this->notificationService->sendManualReviewNotifications(
+                $booking,
+                $supplierBooking,
+                $quote,
+                'QUOTE_EXPIRED_AFTER_PAYMENT',
+                ['source' => 'process_supplier_ticketing']
+            );
+
+
             return;
         }
 
@@ -105,6 +117,15 @@ class ProcessSupplierTicketing implements ShouldQueue
                 0,
                 (string) Str::uuid()
             );
+
+              $this->notificationService->sendManualReviewNotifications(
+                  $booking,
+                  $supplierBooking,
+                  $quote,
+                  'DUFFEL_SANDBOX_AUTO_BOOK_DISABLED',
+                  ['source' => 'process_supplier_ticketing']
+              );
+
 
             return;
         }
@@ -163,6 +184,18 @@ class ProcessSupplierTicketing implements ShouldQueue
 
                 $this->log($booking, $quote, 'book', 'success', null, $payload, $response, $duration, $correlationId);
             });
+
+            $supplierBooking->refresh();
+
+            if ($supplierBooking->manual_review_required) {
+                $this->notificationService->sendManualReviewNotifications(
+                    $booking,
+                    $supplierBooking,
+                    $quote,
+                    'SUPPLIER_MANUAL_ACTION_REQUIRED',
+                    ['source' => 'process_supplier_ticketing']
+                );
+            }
         } catch (\Throwable $e) {
             // Do not let filesystem logging block manual-review state transition.
             $duration = (int) ((microtime(true) - $started) * 1000);
@@ -174,6 +207,15 @@ class ProcessSupplierTicketing implements ShouldQueue
             $booking->addMeta('tsa_fulfillment_status', 'manual_review_required');
             $booking->save();
             $this->log($booking, $quote, 'book', 'failed', 'SUPPLIER_BOOKING_FAILED', $payload, ['error' => $e->getMessage()], $duration, $correlationId);
+
+            $this->notificationService->sendManualReviewNotifications(
+                $booking,
+                $supplierBooking,
+                $quote,
+                'SUPPLIER_BOOKING_FAILED',
+                ['source' => 'process_supplier_ticketing', 'error' => $e->getMessage()]
+            );
+
             return;
         }
     }
