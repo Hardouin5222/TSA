@@ -16,9 +16,321 @@
         'airlines' => [],
         'selected_offer' => null,
         'selected_fare' => null,
+        'direct_only' => false,
     ], $criteria ?? []);
 
     $criteria['passenger_total'] = (int)($criteria['adult_count'] ?? 1) + (int)($criteria['child_count'] ?? 0);
+
+    $criteria['direct_only'] = filter_var($criteria['direct_only'] ?? false, FILTER_VALIDATE_BOOLEAN);
+    $criteria['airlines'] = is_array($criteria['airlines'] ?? [])
+        ? $criteria['airlines']
+        : array_filter([(string) ($criteria['airlines'] ?? '')]);
+    $criteria['airlines'] = array_values(array_filter($criteria['airlines'], function ($airline) {
+        return $airline !== null && $airline !== '';
+    }));
+
+
+    $tsaLocale = app()->getLocale();
+    $tsaLocale = in_array($tsaLocale, ['tr', 'en', 'ru', 'ar'], true) ? $tsaLocale : 'en';
+
+    $tsaFlightText = [
+        'tr' => [
+            'breadcrumb_home' => 'Ana sayfaya dön',
+            'breadcrumb_results' => 'Uçuş sonuçları',
+            'sandbox_badge' => 'Test ortamı',
+            'sandbox_message' => 'Bu ekrandaki uçuş ve fiyat gerçek satışa açık canlı veri değildir. Supplier sandbox test cevabıdır.',
+            'sandbox_support_title' => 'Test ortamı aktif',
+            'sandbox_support_body' => 'Bu ekrandaki uçuş ve fiyatlar canlı satış verisi değildir. Gerçek fiyat için canlı supplier bağlantısı gerekir.',
+            'from' => 'Nereden',
+            'to' => 'Nereye',
+            'departure' => 'Gidiş',
+            'return' => 'Dönüş',
+            'passenger' => 'Yolcu',
+            'search_flights' => 'Uçuş ara',
+            'departure_date' => 'Gidiş tarihi',
+            'optional_return_date' => 'Opsiyonel dönüş tarihi',
+            'passenger_count' => 'Yolcu sayısı',
+            'example_from' => 'Örnek: İstanbul, IST, Sabiha',
+            'example_to' => 'Örnek: London, LHR, JFK',
+            'airport_placeholder' => 'Şehir veya havaalanı yazın',
+            'empty_title' => 'Bu rota için uygun uçuş bulunamadı',
+            'empty_body' => 'Havalimanı, tarih veya yolcu bilgisini değiştirerek tekrar arayın.',
+            'price_alert_title' => 'FİYAT ALARMI KUR',
+            'price_alert_body' => 'Fiyat değişirse haber verelim',
+            'recommendations' => 'Öneriler',
+            'airlines' => 'Hava yolu şirketleri',
+            'direct' => 'Direkt',
+            'direct_flight' => 'Direkt Uçuş',
+            'edit_search' => 'Aramayı değiştir',
+            'compare_dates' => 'Tarihleri karşılaştır',
+            'recommended' => 'Önerilen',
+            'cheapest' => 'En ucuz',
+            'fastest' => 'En hızlı',
+            'direct_first' => 'Direkt önce',
+            'standard' => 'Standart',
+            'basic' => 'Ekonomik',
+            'flex' => 'Esnek',
+            'premium' => 'Premium',
+            'test_price' => 'Test fiyatı',
+            'live_price' => 'Canlı fiyat',
+            'departure_short' => 'Kalkış',
+            'arrival_short' => 'Varış',
+            'sandbox_availability' => 'Sandbox müsaitlik',
+            'live_availability' => 'Canlı müsaitlik',
+            'price_confirm_before_payment' => 'Ödeme öncesi fiyat doğrulama',
+            'package_details' => 'Paket detayları',
+            'select_continue' => 'Seç ve devam et',
+            'choose_package' => 'Uçuş paketini seçin',
+            'package_features' => 'Paket özellikleri',
+            'price_difference' => 'Fiyat farkı',
+            'continue_package' => 'Bu paketle devam et',
+            'close' => 'Kapat',
+            'test_not_for_sale' => 'Test fiyatıdır, satışa açık değildir',
+            'test_label' => 'test',
+            'adult_one' => ':count yetişkin',
+            'adult_many' => ':count yetişkin',
+            'passenger_one' => ':count Yolcu',
+            'passenger_many' => ':count Yolcu',
+            'offer_one' => ':count teklif',
+            'offer_many' => ':count teklif',
+            'stop_one' => ':count aktarma',
+            'stop_many' => ':count aktarma',
+            'selected_flight' => 'Seçili uçuş',
+            'selected_summary' => 'Seçili uçuş özeti',
+            'price' => 'Fiyat',
+            'package' => 'Paket',
+            'back_selected' => 'Seçili uçuşa dön',
+            'nav_home' => 'Ana sayfa',
+            'nav_flights' => 'Uçuşlar',
+            'nav_support' => 'Destek',
+            'nav_login' => 'Giriş yap',
+        ],
+        'en' => [
+            'breadcrumb_home' => 'Back to homepage',
+            'breadcrumb_results' => 'Flight results',
+            'sandbox_badge' => 'Test mode',
+            'sandbox_message' => 'The flight and price shown here are not live sale data. This is a supplier sandbox test response.',
+            'sandbox_support_title' => 'Test mode active',
+            'sandbox_support_body' => 'Flights and prices shown here are not live sale data. A live supplier connection is required for real pricing.',
+            'from' => 'From',
+            'to' => 'To',
+            'departure' => 'Departure',
+            'return' => 'Return',
+            'passenger' => 'Passenger',
+            'search_flights' => 'Search flights',
+            'departure_date' => 'Departure date',
+            'optional_return_date' => 'Optional return date',
+            'passenger_count' => 'Passenger count',
+            'example_from' => 'Example: Istanbul, IST, Sabiha',
+            'example_to' => 'Example: London, LHR, JFK',
+            'airport_placeholder' => 'City or airport',
+            'empty_title' => 'No suitable flights found for this route',
+            'empty_body' => 'Try changing the airport, date, or passenger information.',
+            'price_alert_title' => 'SET PRICE ALERT',
+            'price_alert_body' => 'We will notify you if the price changes',
+            'recommendations' => 'Recommendations',
+            'airlines' => 'Airlines',
+            'direct' => 'Direct',
+            'direct_flight' => 'Direct flight',
+            'edit_search' => 'Edit search',
+            'compare_dates' => 'Compare dates',
+            'recommended' => 'Recommended',
+            'cheapest' => 'Cheapest',
+            'fastest' => 'Fastest',
+            'direct_first' => 'Direct first',
+            'standard' => 'Standard',
+            'basic' => 'Basic',
+            'flex' => 'Flex',
+            'premium' => 'Premium',
+            'test_price' => 'Test price',
+            'live_price' => 'Live price',
+            'departure_short' => 'Departure',
+            'arrival_short' => 'Arrival',
+            'sandbox_availability' => 'Sandbox availability',
+            'live_availability' => 'Live availability',
+            'price_confirm_before_payment' => 'Price confirmation before payment',
+            'package_details' => 'Package details',
+            'select_continue' => 'Select and continue',
+            'choose_package' => 'Choose flight package',
+            'package_features' => 'Package features',
+            'price_difference' => 'Price difference',
+            'continue_package' => 'Continue with this package',
+            'close' => 'Close',
+            'test_not_for_sale' => 'Test price, not available for sale',
+            'test_label' => 'test',
+            'adult_one' => ':count adult',
+            'adult_many' => ':count adults',
+            'passenger_one' => ':count passenger',
+            'passenger_many' => ':count passengers',
+            'offer_one' => ':count offer',
+            'offer_many' => ':count offers',
+            'stop_one' => ':count stop',
+            'stop_many' => ':count stops',
+            'selected_flight' => 'Selected flight',
+            'selected_summary' => 'Selected flight summary',
+            'price' => 'Price',
+            'package' => 'Package',
+            'back_selected' => 'Back to selected flight',
+            'nav_home' => 'Home',
+            'nav_flights' => 'Flights',
+            'nav_support' => 'Support',
+            'nav_login' => 'Login',
+        ],
+        'ru' => [
+            'breadcrumb_home' => 'На главную',
+            'breadcrumb_results' => 'Результаты поиска',
+            'sandbox_badge' => 'Тестовый режим',
+            'sandbox_message' => 'Рейс и цена на этом экране не являются реальными данными для продажи. Это тестовый ответ sandbox-поставщика.',
+            'sandbox_support_title' => 'Тестовый режим активен',
+            'sandbox_support_body' => 'Рейсы и цены на этом экране не являются реальными данными продажи. Для реальных цен требуется live-подключение поставщика.',
+            'from' => 'Откуда',
+            'to' => 'Куда',
+            'departure' => 'Вылет',
+            'return' => 'Возврат',
+            'passenger' => 'Пассажир',
+            'search_flights' => 'Найти рейсы',
+            'departure_date' => 'Дата вылета',
+            'optional_return_date' => 'Дата возврата необязательно',
+            'passenger_count' => 'Количество пассажиров',
+            'example_from' => 'Например: Istanbul, IST, Sabiha',
+            'example_to' => 'Например: London, LHR, JFK',
+            'airport_placeholder' => 'Город или аэропорт',
+            'empty_title' => 'Подходящие рейсы по этому маршруту не найдены',
+            'empty_body' => 'Измените аэропорт, дату или данные пассажиров и попробуйте снова.',
+            'price_alert_title' => 'УВЕДОМЛЕНИЕ О ЦЕНЕ',
+            'price_alert_body' => 'Мы сообщим, если цена изменится',
+            'recommendations' => 'Рекомендации',
+            'airlines' => 'Авиакомпании',
+            'direct' => 'Прямой',
+            'direct_flight' => 'Прямой рейс',
+            'edit_search' => 'Изменить поиск',
+            'compare_dates' => 'Сравнить даты',
+            'recommended' => 'Рекомендуемые',
+            'cheapest' => 'Самые дешевые',
+            'fastest' => 'Самые быстрые',
+            'direct_first' => 'Сначала прямые',
+            'standard' => 'Стандарт',
+            'basic' => 'Базовый',
+            'flex' => 'Гибкий',
+            'premium' => 'Премиум',
+            'test_price' => 'Тестовая цена',
+            'live_price' => 'Актуальная цена',
+            'departure_short' => 'Вылет',
+            'arrival_short' => 'Прибытие',
+            'sandbox_availability' => 'Тестовая доступность',
+            'live_availability' => 'Актуальная доступность',
+            'price_confirm_before_payment' => 'Проверка цены перед оплатой',
+            'package_details' => 'Детали пакета',
+            'select_continue' => 'Выбрать и продолжить',
+            'choose_package' => 'Выберите пакет рейса',
+            'package_features' => 'Особенности пакета',
+            'price_difference' => 'Разница в цене',
+            'continue_package' => 'Продолжить с этим пакетом',
+            'close' => 'Закрыть',
+            'test_not_for_sale' => 'Тестовая цена, недоступна для продажи',
+            'test_label' => 'тест',
+            'adult_one' => ':count взрослый',
+            'adult_many' => ':count взрослых',
+            'passenger_one' => ':count пассажир',
+            'passenger_many' => ':count пассажиров',
+            'offer_one' => ':count предложение',
+            'offer_many' => ':count предложений',
+            'stop_one' => ':count пересадка',
+            'stop_many' => ':count пересадок',
+            'selected_flight' => 'Выбранный рейс',
+            'selected_summary' => 'Сводка выбранного рейса',
+            'price' => 'Цена',
+            'package' => 'Пакет',
+            'back_selected' => 'Вернуться к выбранному рейсу',
+            'nav_home' => 'Главная',
+            'nav_flights' => 'Рейсы',
+            'nav_support' => 'Поддержка',
+            'nav_login' => 'Вход',
+        ],
+        'ar' => [
+            'breadcrumb_home' => 'العودة إلى الصفحة الرئيسية',
+            'breadcrumb_results' => 'نتائج الرحلات',
+            'sandbox_badge' => 'وضع الاختبار',
+            'sandbox_message' => 'الرحلة والسعر المعروضان هنا ليسا بيانات بيع حقيقية. هذا رد اختباري من بيئة sandbox الخاصة بالمورّد.',
+            'sandbox_support_title' => 'وضع الاختبار مفعّل',
+            'sandbox_support_body' => 'الرحلات والأسعار المعروضة هنا ليست بيانات بيع مباشرة. يلزم اتصال مباشر بالمورّد للحصول على السعر الحقيقي.',
+            'from' => 'من',
+            'to' => 'إلى',
+            'departure' => 'المغادرة',
+            'return' => 'العودة',
+            'passenger' => 'المسافر',
+            'search_flights' => 'ابحث عن الرحلات',
+            'departure_date' => 'تاريخ المغادرة',
+            'optional_return_date' => 'تاريخ العودة اختياري',
+            'passenger_count' => 'عدد المسافرين',
+            'example_from' => 'مثال: Istanbul, IST, Sabiha',
+            'example_to' => 'مثال: London, LHR, JFK',
+            'airport_placeholder' => 'المدينة أو المطار',
+            'empty_title' => 'لم يتم العثور على رحلات مناسبة لهذا المسار',
+            'empty_body' => 'غيّر المطار أو التاريخ أو بيانات المسافر وحاول مرة أخرى.',
+            'price_alert_title' => 'تنبيه السعر',
+            'price_alert_body' => 'سنخبرك إذا تغيّر السعر',
+            'recommendations' => 'الاقتراحات',
+            'airlines' => 'شركات الطيران',
+            'direct' => 'مباشر',
+            'direct_flight' => 'رحلة مباشرة',
+            'edit_search' => 'تعديل البحث',
+            'compare_dates' => 'مقارنة التواريخ',
+            'recommended' => 'موصى به',
+            'cheapest' => 'الأرخص',
+            'fastest' => 'الأسرع',
+            'direct_first' => 'المباشر أولاً',
+            'standard' => 'قياسي',
+            'basic' => 'أساسي',
+            'flex' => 'مرن',
+            'premium' => 'مميز',
+            'test_price' => 'سعر اختباري',
+            'live_price' => 'سعر مباشر',
+            'departure_short' => 'المغادرة',
+            'arrival_short' => 'الوصول',
+            'sandbox_availability' => 'توفر اختباري',
+            'live_availability' => 'توفر مباشر',
+            'price_confirm_before_payment' => 'تأكيد السعر قبل الدفع',
+            'package_details' => 'تفاصيل الباقة',
+            'select_continue' => 'اختر وتابع',
+            'choose_package' => 'اختر باقة الرحلة',
+            'package_features' => 'ميزات الباقة',
+            'price_difference' => 'فرق السعر',
+            'continue_package' => 'تابع بهذه الباقة',
+            'close' => 'إغلاق',
+            'test_not_for_sale' => 'سعر اختباري، غير متاح للبيع',
+            'test_label' => 'اختبار',
+            'adult_one' => ':count بالغ',
+            'adult_many' => ':count بالغين',
+            'passenger_one' => ':count مسافر',
+            'passenger_many' => ':count مسافرين',
+            'offer_one' => ':count عرض',
+            'offer_many' => ':count عروض',
+            'stop_one' => ':count توقف',
+            'stop_many' => ':count توقفات',
+            'selected_flight' => 'الرحلة المختارة',
+            'selected_summary' => 'ملخص الرحلة المختارة',
+            'price' => 'السعر',
+            'package' => 'الباقة',
+            'back_selected' => 'العودة إلى الرحلة المختارة',
+            'nav_home' => 'الرئيسية',
+            'nav_flights' => 'الرحلات',
+            'nav_support' => 'الدعم',
+            'nav_login' => 'تسجيل الدخول',
+        ],
+    ];
+
+    $ft = function ($key) use ($tsaFlightText, $tsaLocale) {
+        return $tsaFlightText[$tsaLocale][$key] ?? $tsaFlightText['en'][$key] ?? $key;
+    };
+
+    $ftCount = function ($count, $oneKey, $manyKey) use ($ft) {
+        $count = (int) $count;
+        $template = $ft($count === 1 ? $oneKey : $manyKey);
+
+        return str_replace(':count', (string) $count, $template);
+    };
+
 
     $routeName = route('flight.search');
     $selectedOffer = $selectedOffer ?? null;
@@ -42,8 +354,8 @@
 
     if ($isSandboxSearch) {
         $supportCard = [
-            'title' => __('Test ortamı aktif'),
-            'body' => __('Bu ekrandaki uçuş ve fiyatlar canlı satış verisi değildir. Gerçek fiyat için canlı supplier bağlantısı gerekir.'),
+            'title' => $ft('sandbox_support_title'),
+            'body' => $ft('sandbox_support_body'),
         ];
     }
 
@@ -79,29 +391,30 @@
     $destinationDisplay = $airportLabel($criteria['destination'] ?? '');
     $airportSearchUrl = route('flight.airport.search', [], false);
 
-    $humanFare = function ($label) {
+    $humanFare = function ($label) use ($ft) {
         $label = trim((string) $label);
 
         return match (strtolower($label)) {
-            'standard' => __('Standart'),
-            'basic' => __('Ekonomik'),
-            'flex' => __('Esnek'),
-            'premium' => __('Premium'),
-            default => $label ?: __('Standart'),
+            'standard', 'standart' => $ft('standard'),
+            'basic' => $ft('basic'),
+            'flex' => $ft('flex'),
+            'premium' => $ft('premium'),
+            default => $label ?: $ft('standard'),
         };
     };
 
-    $humanFeature = function ($feature) use ($isSandboxSearch) {
+    $humanFeature = function ($feature) use ($isSandboxSearch, $ft) {
         $feature = trim((string) $feature);
         $key = strtolower($feature);
 
         return match ($key) {
-            'duffel live availability' => $isSandboxSearch ? __('Sandbox müsaitlik') : __('Canlı müsaitlik'),
-            'quote required before payment' => __('Ödeme öncesi fiyat doğrulama'),
-            'direct' => __('Direkt uçuş'),
+            'duffel live availability' => $isSandboxSearch ? $ft('sandbox_availability') : $ft('live_availability'),
+            'quote required before payment' => $ft('price_confirm_before_payment'),
+            'direct' => $ft('direct_flight'),
             default => $feature,
         };
     };
+
 
     $airportCountry = function ($code) {
         $code = strtoupper(trim((string) $code));
@@ -119,21 +432,34 @@
     $destinationCountry = strtoupper((string) $airportCountry($criteria['destination'] ?? ''));
     $isTurkeyDomestic = $originCountry === 'TR' && $destinationCountry === 'TR';
 
-    $uiCurrency = $isTurkeyDomestic ? 'TRY' : strtoupper((string)($criteria['currency'] ?? ''));
-    $uiCurrency = $uiCurrency ?: null;
+    // Display-only conversion follows Booking Core currency switcher.
+    // Supplier quote/payment amount and currency are not changed here.
+    $uiCurrency = strtoupper((string) \App\Currency::getCurrent('currency_main', setting_item('currency_main', 'try')));
 
-    $uiMoney = function ($amount, $currency = null) use ($isTurkeyDomestic) {
+    $activeCurrencyRows = collect(\App\Currency::getActiveCurrency() ?: []);
+    $currencyRateToMain = $activeCurrencyRows
+        ->mapWithKeys(function ($row) {
+            return [strtoupper((string) ($row['currency_main'] ?? '')) => (float) ($row['rate'] ?? 1)];
+        })
+        ->filter(fn ($rate, $code) => $code && $rate > 0)
+        ->all();
+
+    $currencyRateToMain[strtoupper((string) setting_item('currency_main', 'try'))] = 1.0;
+
+    $uiMoney = function ($amount, $currency = null) use ($uiCurrency, $currencyRateToMain) {
         $amount = (float) $amount;
-        $currency = strtoupper((string) ($currency ?: 'USD'));
+        $sourceCurrency = strtoupper((string) ($currency ?: 'USD'));
+        $targetCurrency = $uiCurrency ?: $sourceCurrency;
 
-        // Display-only conversion for Turkey domestic routes while live supplier sandbox may return USD.
-        // Booking/quote/payment still keeps the supplier-confirmed amount/currency.
-        if ($isTurkeyDomestic && $currency !== 'TRY') {
-            $amount = $amount * 33;
-            $currency = 'TRY';
+        $sourceRate = (float) ($currencyRateToMain[$sourceCurrency] ?? 1.0);
+        $targetRate = (float) ($currencyRateToMain[$targetCurrency] ?? 1.0);
+
+        if ($targetCurrency !== $sourceCurrency) {
+            $mainAmount = $sourceRate > 0 ? ($amount / $sourceRate) : $amount;
+            $amount = $mainAmount * ($targetRate > 0 ? $targetRate : 1.0);
         }
 
-        $symbol = match ($currency) {
+        $symbol = match ($targetCurrency) {
             'TRY' => '₺',
             'EUR' => '€',
             'GBP' => '£',
@@ -141,7 +467,9 @@
             default => '$',
         };
 
-        return $symbol . number_format($amount, 0, ',', '.');
+        $decimals = in_array($targetCurrency, ['TRY', 'RUB'], true) ? 0 : 2;
+
+        return $symbol . number_format($amount, $decimals, ',', '.');
     };
 
     $offerUiPrice = function ($offer) use ($uiMoney) {
@@ -158,17 +486,59 @@
         );
     };
 
-    $airlineDisplayName = function ($offer) use ($isSandboxSearch) {
-        $name = trim((string) ($offer['airline_name'] ?? __('Havayolu')));
+    $airlineDisplayName = function ($offer) use ($isSandboxSearch, $ft) {
+        $name = trim((string) ($offer['airline_name'] ?? 'Airline'));
 
         if ($isSandboxSearch && strtolower($name) === 'duffel airways') {
-            return __('Duffel Airways') . ' (' . __('test') . ')';
+            return 'Duffel Airways' . ' (' . $ft('test_label') . ')';
         }
 
         return $name;
     };
 
-    $priceModeLabel = $isSandboxSearch ? __('Test fiyatı') : __('Canlı fiyat');
+    $priceModeLabel = $isSandboxSearch ? $ft('test_price') : $ft('live_price');
+
+    $adultOptionLabel = function ($count) use ($ftCount) {
+        return $ftCount($count, 'adult_one', 'adult_many');
+    };
+
+    $passengerSummary = function ($count) use ($ftCount) {
+        return $ftCount($count, 'passenger_one', 'passenger_many');
+    };
+
+    $offerSummary = function ($count) use ($ftCount) {
+        return $ftCount($count, 'offer_one', 'offer_many');
+    };
+
+    $humanBadge = function ($badge) use ($ft) {
+        $badge = trim((string) $badge);
+        $key = strtolower($badge);
+
+        return match ($key) {
+            'en ucuz', 'cheapest', 'самые дешевые', 'الأرخص' => $ft('cheapest'),
+            'en hızlı', 'en hizli', 'fastest', 'самые быстрые', 'الأسرع' => $ft('fastest'),
+            'önerilen', 'onerilen', 'recommended', 'рекомендуемые', 'موصى به' => $ft('recommended'),
+            'direkt', 'direct', 'прямой', 'مباشر' => $ft('direct'),
+            default => $badge,
+        };
+    };
+
+    $humanStopLabel = function ($label) use ($ft, $ftCount) {
+        $label = trim((string) $label);
+        $lower = mb_strtolower($label);
+
+        if (str_contains($lower, 'direkt') || str_contains($lower, 'direct') || str_contains($lower, 'прям') || str_contains($lower, 'مباشر')) {
+            return $ft('direct_flight');
+        }
+
+        if (preg_match('/(\d+)/', $label, $match)) {
+            $count = (int) $match[1];
+
+            return $ftCount($count, 'stop_one', 'stop_many');
+        }
+
+        return $label;
+    };
 @endphp
 
 @push('css')
@@ -294,9 +664,9 @@
         @endif
 
             <div class="tsa-flight-breadcrumb">
-                <a href="{{ url('/') }}">{{ __('Ana sayfaya don') }}</a>
+                <a href="{{ url('/') }}">{{ $ft('breadcrumb_home') }}</a>
                 <span>/</span>
-                <span>{{ __('Ucus sonuclari') }}</span>
+                <span>{{ $ft('breadcrumb_results') }}</span>
             </div>
 
             <div class="tsa-flight-panel tsa-topbar">
@@ -308,27 +678,27 @@
                     </div>
                 </div>
                 <div class="tsa-topnav">
-                    <a href="{{ url('/') }}">{{ __('Ana sayfa') }}</a>
-                    <a href="{{ $routeName }}">{{ __('Ucuslar') }}</a>
-                    <a href="#support">{{ __('Destek') }}</a>
-                    <a href="{{ url('/login') }}" class="tsa-login-chip">{{ __('Giris yap') }}</a>
+                    <a href="{{ url('/') }}">{{ $ft('nav_home') }}</a>
+                    <a href="{{ $routeName }}">{{ $ft('nav_flights') }}</a>
+                    <a href="#support">{{ $ft('nav_support') }}</a>
+                    <a href="{{ url('/login') }}" class="tsa-login-chip">{{ $ft('nav_login') }}</a>
                 </div>
             </div>
 
             @if($isSandboxSearch)
                 <div class="tsa-sandbox-warning">
-                    <strong>{{ __('Test ortamı') }}</strong>
-                    <span>{{ __('Bu ekrandaki uçuş ve fiyat gerçek satışa açık canlı veri değildir. Supplier sandbox test cevabıdır.') }}</span>
+                    <strong>{{ $ft('sandbox_badge') }}</strong>
+                    <span>{{ $ft('sandbox_message') }}</span>
                 </div>
             @endif
 
             <form class="tsa-flight-panel tsa-search-strip" method="GET" action="{{ $routeName }}">
                   <div class="tsa-search-field tsa-search-field--airport" data-airport-picker>
-                      <label>{{ __('Nereden') }}</label>
+                      <label>{{ $ft('from') }}</label>
                       <input type="text"
                              class="tsa-airport-input"
                              value="{{ $originDisplay }}"
-                             placeholder="{{ __('Şehir veya havaalanı yazın') }}"
+                             placeholder="{{ $ft('airport_placeholder') }}"
                              autocomplete="off"
                              spellcheck="false"
                              autocorrect="off"
@@ -338,14 +708,14 @@
                       <input type="hidden" name="origin" class="tsa-airport-value" value="{{ $criteria['origin'] }}">
                       <span class="tsa-airport-caret">⌄</span>
                       <div class="tsa-airport-dropdown"></div>
-                      <small>{{ __('Örnek: Istanbul, IST, Sabiha') }}</small>
+                      <small>{{ $ft('example_from') }}</small>
                   </div>
                   <div class="tsa-search-field tsa-search-field--airport" data-airport-picker>
-                      <label>{{ __('Nereye') }}</label>
+                      <label>{{ $ft('to') }}</label>
                       <input type="text"
                              class="tsa-airport-input"
                              value="{{ $destinationDisplay }}"
-                             placeholder="{{ __('Şehir veya havaalanı yazın') }}"
+                             placeholder="{{ $ft('airport_placeholder') }}"
                              autocomplete="off"
                              spellcheck="false"
                              autocorrect="off"
@@ -355,34 +725,34 @@
                       <input type="hidden" name="destination" class="tsa-airport-value" value="{{ $criteria['destination'] }}">
                       <span class="tsa-airport-caret">⌄</span>
                       <div class="tsa-airport-dropdown"></div>
-                      <small>{{ __('Örnek: London, LHR, JFK') }}</small>
+                      <small>{{ $ft('example_to') }}</small>
                   </div>
                 <div class="tsa-search-field">
-                    <label>{{ __('Gidiş') }}</label>
+                    <label>{{ $ft('departure') }}</label>
                     <input type="date" name="departure_date" value="{{ $criteria['departure_date'] }}">
-                    <small>{{ __('Gidiş tarihi') }}</small>
+                    <small>{{ $ft('departure_date') }}</small>
                 </div>
                 <div class="tsa-search-field">
-                    <label>{{ __('Dönüş') }}</label>
+                    <label>{{ $ft('return') }}</label>
                     <input type="date" name="return_date" value="{{ $criteria['return_date'] }}">
-                    <small>{{ __('Opsiyonel dönüş tarihi') }}</small>
+                    <small>{{ $ft('optional_return_date') }}</small>
                 </div>
                 <div class="tsa-search-field">
-                    <label>{{ __('Yolcu') }}</label>
+                    <label>{{ $ft('passenger') }}</label>
                     <select name="adult_count">
                         @for ($adult = 1; $adult <= 6; $adult++)
-                            <option value="{{ $adult }}" @selected($criteria['adult_count'] == $adult)>{{ $adult }} {{ __('yetiskin') }}</option>
+                            <option value="{{ $adult }}" @selected($criteria['adult_count'] == $adult)>{{ $adultOptionLabel($adult) }}</option>
                         @endfor
                     </select>
-                    <small>{{ __('Yolcu sayısı') }}</small>
+                    <small>{{ $ft('passenger_count') }}</small>
                 </div>
-                <button class="tsa-search-submit" type="submit">{{ __('Uçuş ara') }}</button>
+                <button class="tsa-search-submit" type="submit">{{ $ft('search_flights') }}</button>
             </form>
 
             @if ($offers->isEmpty())
                 <div class="tsa-empty-card">
-                    <h2>{{ __('Bu rota için uygun uçuş bulunamadı') }}</h2>
-                    <p>{{ __('Havalimanı, tarih veya yolcu bilgisini değiştirerek tekrar arayın.') }}</p>
+                    <h2>{{ $ft('empty_title') }}</h2>
+                    <p>{{ $ft('empty_body') }}</p>
                 </div>
             @else
                 <div class="tsa-layout">
@@ -397,8 +767,8 @@
                         <div class="tsa-filter-card">
                             <div class="tsa-toggle">
                                 <div>
-                                    <h3>{{ __('Fiyat alarmi kur') }}</h3>
-                                    <p>{{ __('Fiyat degisirse haber verelim') }}</p>
+                                    <h3>{{ $ft('price_alert_title') }}</h3>
+                                    <p>{{ $ft('price_alert_body') }}</p>
                                 </div>
                                 <div class="tsa-switch"></div>
                             </div>
@@ -412,15 +782,15 @@
                             @endforeach
 
                             <div class="tsa-filter-group">
-                                <h4>{{ __('Oneriler') }}</h4>
+                                <h4>{{ $ft('recommendations') }}</h4>
                                 <label class="tsa-filter-option">
                                     <input type="checkbox" name="direct_only" value="1" @checked($criteria['direct_only']) onchange="this.form.submit()">
-                                    <span>{{ __('Direkt') }}</span>
+                                    <span>{{ $ft('direct') }}</span>
                                 </label>
                             </div>
 
                             <div class="tsa-filter-group">
-                                <h4>{{ __('Hava yolu sirketleri') }}</h4>
+                                <h4>{{ $ft('airlines') }}</h4>
                                 @foreach ($airlineFilters as $airlineFilter)
                                     <label class="tsa-filter-option">
                                         <input type="checkbox" name="airlines[]" value="{{ $airlineFilter['code'] }}" @checked(in_array($airlineFilter['code'], $criteria['airlines'], true)) onchange="this.form.submit()">
@@ -436,14 +806,14 @@
                             <div class="tsa-route">
                                 <div>{{ ($criteria['origin'] ?: '---') . ' → ' . ($criteria['destination'] ?: '---') }}</div>
                                 <div class="tsa-edit-links">
-                                    <span>{{ __('Aramayı düzenle') }}</span>
-                                    <span>{{ __('Günlük fiyatlar') }}</span>
+                                    <span>{{ $ft('edit_search') }}</span>
+                                    <span>{{ $ft('compare_dates') }}</span>
                                 </div>
                             </div>
                             <div class="tsa-route-meta">
                                 <span>{{ \Carbon\Carbon::parse($criteria['departure_date'])->translatedFormat('d M D') }}</span>
-                                <span>{{ __(':count Yolcu', ['count' => $criteria['passenger_total']]) }}</span>
-                                <span>{{ __(':count teklif', ['count' => $offers->count()]) }}</span>
+                                <span>{{ $passengerSummary($criteria['passenger_total']) }}</span>
+                                <span>{{ $offerSummary($offers->count()) }}</span>
                             </div>
                         </div>
 
@@ -454,7 +824,7 @@
                         </div>
 
                         <div class="tsa-sort-tabs">
-                            @foreach (['recommended' => __('Önerilen'), 'price' => __('En ucuz'), 'duration' => __('En hızlı'), 'departure' => __('Aktarmasız önce')] as $sortKey => $sortLabel)
+                            @foreach (['recommended' => $ft('recommended'), 'price' => $ft('cheapest'), 'duration' => $ft('fastest'), 'departure' => $ft('direct_first')] as $sortKey => $sortLabel)
                                 <form method="GET" action="{{ $routeName }}">
                                     @foreach ($queryState as $key => $value)
                                         @if ($key !== 'sort')
@@ -478,14 +848,17 @@
                                 <div class="tsa-result-main">
                                     <div class="tsa-card-badges">
                                         @foreach ($offer['badges'] as $badge)
-                                            <span class="tsa-badge">{{ $badge }}</span>
+                                            <span class="tsa-badge">{{ $humanBadge($badge) }}</span>
                                         @endforeach
                                     </div>
 
                                     <div class="tsa-airline-row">
-                                        <div>
-                                            <h2 class="tsa-airline-name">{{ $airlineDisplayName($offer) }}</h2>
-                                            <div class="tsa-airline-meta">{{ $humanFare($offer['selected_fare']['label'] ?? '') }} • {{ $priceModeLabel }}</div>
+                                        <div class="tsa-airline-identity">
+                                            <div class="tsa-airline-logo">{{ $offer['airline_initials'] ?? 'FL' }}</div>
+                                            <div>
+                                                <h2 class="tsa-airline-name">{{ $airlineDisplayName($offer) }}</h2>
+                                                <div class="tsa-airline-meta">{{ $humanFare($offer['selected_fare']['label'] ?? '') }} • {{ $priceModeLabel }}</div>
+                                            </div>
                                         </div>
                                         <div class="tsa-price-rail">{{ $offerUiPrice($offer) }}</div>
                                     </div>
@@ -494,15 +867,17 @@
                                         <div class="tsa-time-block">
                                             <strong>{{ $offer['departure_time_label'] }}</strong>
                                             <span>{{ $offer['origin'] }}</span>
+                                          <small>{{ $ft('departure_short') }}</small>
                                         </div>
                                         <div class="tsa-timeline-center">
                                             <strong>{{ $offer['duration_label'] }}</strong>
                                             <div class="tsa-timeline-line"></div>
-                                            <span>{{ $offer['stop_label'] }}</span>
+                                            <span>{{ $humanStopLabel($offer['stop_label'] ?? '') }}</span>
                                         </div>
                                         <div class="tsa-time-block" style="text-align:right">
                                             <strong>{{ $offer['arrival_time_label'] }}</strong>
                                             <span>{{ $offer['destination'] }}</span>
+                                          <small>{{ $ft('arrival_short') }}</small>
                                         </div>
                                     </div>
 
@@ -519,7 +894,7 @@
                                             @endforeach
                                         </div>
                                         <div class="tsa-card-actions">
-                                            <button type="button" class="tsa-secondary-btn js-open-modal" data-modal-id="modal-{{ $offer['id'] }}">{{ __('Paketleri incele') }}</button>
+                                            <button type="button" class="tsa-secondary-btn js-open-modal" data-modal-id="modal-{{ $offer['id'] }}">{{ $ft('package_details') }}</button>
                                         </div>
                                     </div>
                                 </div>
@@ -528,17 +903,17 @@
                                     <div class="currency">{{ $humanFare($offer['selected_fare']['label'] ?? '') }}</div>
                                     @if($isTurkeyDomestic)
                                         <div class="tsa-ui-currency-note">
-                                            {{ $isSandboxSearch ? __('Sandbox test fiyatı, satışa açık değildir') : __('Türkiye içi rota için TL gösteriliyor') }}
+                                            {{ $isSandboxSearch ? $ft('test_not_for_sale') : $ft('price') }}
                                         </div>
                                     @endif
-                                    <button type="button" class="tsa-primary-btn js-open-modal" data-modal-id="modal-{{ $offer['id'] }}">{{ __('Seç ve devam et') }}</button>
+                                    <button type="button" class="tsa-primary-btn js-open-modal" data-modal-id="modal-{{ $offer['id'] }}">{{ $ft('select_continue') }}</button>
                                 </div>
                             </article>
 
                             <div class="tsa-modal" id="modal-{{ $offer['id'] }}">
                                 <div class="tsa-modal-shell">
                                     <div class="tsa-modal-head">
-                                        <h3>{{ __('Uçuş paketini seçin') }}</h3>
+                                        <h3>{{ $ft('choose_package') }}</h3>
                                         <button type="button" class="tsa-modal-close js-close-modal">×</button>
                                     </div>
                                     <div class="tsa-modal-grid">
@@ -560,7 +935,7 @@
                                                     </ul>
                                                 </div>
                                                 <div class="tsa-modal-section">
-                                                    <strong>{{ __('Paket özellikleri') }}</strong>
+                                                    <strong>{{ $ft('package_features') }}</strong>
                                                     <ul>
                                                         @forelse ($fareOption['features'] as $feature)
                                                             <li>{{ $humanFeature($feature) }}</li>
@@ -576,7 +951,7 @@
                                                 @endphp
                                                 <div class="tsa-modal-price">{{ $fareUiPrice($fareOption, $offer) }}</div>
                                                 @if(!empty($fareDeltaLabel) && !in_array($fareDeltaLabel, $zeroDeltaLabels, true))
-                                                    <div class="tsa-modal-delta">{{ __('Fiyat farkı') }}: {{ $fareDeltaLabel }}</div>
+                                                    <div class="tsa-modal-delta">{{ $ft('price_difference') }}: {{ $fareDeltaLabel }}</div>
                                                 @endif
                                                 <form method="POST" action="{{ route('flight.supplier.quote') }}" style="margin-top:18px">
                                                     @csrf
@@ -591,7 +966,7 @@
                                                     @endforeach
                                                     <input type="hidden" name="selected_offer" value="{{ $offer['id'] }}">
                                                     <input type="hidden" name="selected_fare" value="{{ $fareOption['id'] }}">
-                                                    <button type="submit" class="tsa-modal-submit" style="width:100%">{{ __('Fiyatı doğrula ve devam et') }}</button>
+                                                    <button type="submit" class="tsa-modal-submit" style="width:100%">{{ __('Bu paketle devam et') }}</button>
                                                 </form>
                                             </div>
                                         @endforeach
@@ -601,7 +976,7 @@
                                             <strong>{{ $airlineDisplayName($offer) }}</strong>
                                             <span>{{ $humanFare($offer['selected_fare']['label'] ?? '') }} • {{ $offerUiPrice($offer) }}</span>
                                         </div>
-                                        <button type="button" class="tsa-secondary-btn js-close-modal">{{ __('Kapat') }}</button>
+                                        <button type="button" class="tsa-secondary-btn js-close-modal">{{ $ft('close') }}</button>
                                     </div>
                                 </div>
                             </div>
@@ -617,15 +992,15 @@
 
                 @if ($selectedOfferData && !empty($criteria['selected_offer']))
                     <div class="tsa-summary-card" style="margin-top:18px">
-                        <span class="tsa-badge">{{ __('Seçili uçuş') }}</span>
-                        <h3>{{ __('Seçili uçuş özeti') }}</h3>
+                        <span class="tsa-badge">{{ $ft('selected_flight') }}</span>
+                        <h3>{{ $ft('selected_summary') }}</h3>
                         <div class="tsa-summary-body">
                             <strong>{{ $airlineDisplayName($selectedOfferData) }}</strong>
                             <div>{{ $selectedOfferData['route_label'] }}</div>
                         </div>
                         <div class="tsa-summary-grid">
                             <div class="tsa-summary-box">
-                                <label>{{ __('Fiyat') }}</label>
+                                <label>{{ $ft('price') }}</label>
                                 <strong>{{ $offerUiPrice($selectedOfferData) }}</strong>
                             </div>
                             <div class="tsa-summary-box">
@@ -633,7 +1008,7 @@
                                 <strong>{{ $selectedOfferData['duration_label'] }}</strong>
                             </div>
                             <div class="tsa-summary-box">
-                                <label>{{ __('Paket') }}</label>
+                                <label>{{ $ft('package') }}</label>
                                 <strong>{{ $humanFare($selectedOfferData['selected_fare']['label'] ?? '') }}</strong>
                             </div>
                             <div class="tsa-summary-box">
@@ -645,8 +1020,8 @@
                             {{ __('Bu panel satin alma kararini destekler. Sonraki adimda secilen supplier paketini checkout koprusune baglayacagiz.') }}
                         </div>
                         <div class="tsa-summary-actions">
-                            <a href="#offer-{{ $selectedOfferData['id'] }}" class="tsa-primary-btn">{{ __('Seçili uçuşa dön') }}</a>
-                            <a href="#support" class="tsa-secondary-btn">{{ __('Destek') }}</a>
+                            <a href="#offer-{{ $selectedOfferData['id'] }}" class="tsa-primary-btn">{{ $ft('back_selected') }}</a>
+                            <a href="#support" class="tsa-secondary-btn">{{ $ft('nav_support') }}</a>
                         </div>
                     </div>
                 @endif
@@ -975,6 +1350,787 @@
     .tsa-card-actions .tsa-secondary-btn{
         padding:13px 16px;
         white-space:nowrap;
+    }
+</style>
+@endpush
+
+
+@push('css')
+<style id="tsa-results-polish-v1-css">
+    .tsa-flight-shell{
+        background:
+            radial-gradient(circle at top left, rgba(15,118,110,.08), transparent 34%),
+            linear-gradient(135deg,#fbf7ef 0%,#f6f5ef 45%,#eef7f3 100%)!important;
+    }
+
+    .tsa-flight-container{
+        max-width:1360px!important;
+    }
+
+    .tsa-topbar{
+        padding:18px 22px!important;
+        border-radius:22px!important;
+    }
+
+    .tsa-brand-mark{
+        width:42px!important;
+        height:42px!important;
+        border-radius:14px!important;
+        font-size:21px!important;
+    }
+
+    .tsa-topnav{
+        gap:14px!important;
+    }
+
+    .tsa-topnav a{
+        padding:10px 12px;
+        border-radius:12px;
+    }
+
+    .tsa-topnav a:hover{
+        background:#f2f7f4;
+    }
+
+    .tsa-login-chip{
+        padding:10px 14px!important;
+        border-radius:14px!important;
+    }
+
+    .tsa-sandbox-warning{
+        margin-bottom:14px!important;
+        border-radius:18px!important;
+        padding:13px 16px!important;
+    }
+
+    .tsa-search-strip{
+        grid-template-columns:1.25fr 1.25fr .82fr .82fr .62fr 148px!important;
+        gap:12px!important;
+        padding:16px!important;
+        border-radius:24px!important;
+    }
+
+    .tsa-search-field{
+        padding:14px 14px 12px!important;
+        border-radius:17px!important;
+    }
+
+    .tsa-search-field label{
+        margin-bottom:6px!important;
+        font-size:11px!important;
+    }
+
+    .tsa-search-field input,
+    .tsa-search-field select{
+        font-size:18px!important;
+        min-height:28px;
+    }
+
+    .tsa-search-field small{
+        font-size:12px!important;
+        margin-top:6px!important;
+    }
+
+    .tsa-search-submit{
+        min-height:76px;
+        border-radius:17px!important;
+        font-size:16px!important;
+        box-shadow:0 14px 28px rgba(15,118,110,.18);
+    }
+
+    .tsa-layout{
+        grid-template-columns:240px minmax(0,1fr) 230px!important;
+        gap:14px!important;
+    }
+
+    .tsa-sidebar,
+    .tsa-support-card,
+    .tsa-search-summary,
+    .tsa-day-tabs,
+    .tsa-sort-tabs,
+    .tsa-result-card{
+        border-radius:20px!important;
+    }
+
+    .tsa-sidebar{
+        padding:16px!important;
+    }
+
+    .tsa-rail-icons{
+        display:none!important;
+    }
+
+    .tsa-filter-card{
+        border-radius:18px!important;
+        padding:15px!important;
+    }
+
+    .tsa-filter-card h3{
+        font-size:13px!important;
+    }
+
+    .tsa-filter-card p{
+        font-size:13px!important;
+    }
+
+    .tsa-filter-group h4{
+        font-size:13px!important;
+    }
+
+    .tsa-filter-option{
+        font-size:14px!important;
+    }
+
+    .tsa-search-summary{
+        padding:17px 20px!important;
+    }
+
+    .tsa-route{
+        font-size:19px!important;
+    }
+
+    .tsa-route-meta{
+        margin-top:8px;
+        flex-wrap:wrap;
+    }
+
+    .tsa-edit-links{
+        gap:10px!important;
+        font-size:13px!important;
+    }
+
+    .tsa-edit-links span{
+        padding:7px 10px;
+        border-radius:999px;
+        background:#f3f7f5;
+        color:#31544a;
+    }
+
+    .tsa-day-tab,
+    .tsa-sort-tab{
+        padding:13px 14px!important;
+        font-size:14px!important;
+    }
+
+    .tsa-result-card{
+        grid-template-columns:minmax(0,1fr) 240px!important;
+        border:1px solid #dce9e3!important;
+        box-shadow:0 18px 38px rgba(15,50,34,.065)!important;
+        transition:transform .18s ease, box-shadow .18s ease;
+    }
+
+    .tsa-result-card:hover{
+        transform:translateY(-2px);
+        box-shadow:0 24px 48px rgba(15,50,34,.10)!important;
+    }
+
+    .tsa-result-main{
+        padding:20px 22px!important;
+    }
+
+    .tsa-card-badges{
+        margin-bottom:10px!important;
+    }
+
+    .tsa-badge{
+        font-size:12px!important;
+        padding:5px 10px!important;
+    }
+
+    .tsa-airline-row{
+        align-items:center!important;
+        margin-bottom:16px!important;
+    }
+
+    .tsa-airline-identity{
+        display:flex;
+        align-items:center;
+        gap:12px;
+        min-width:0;
+    }
+
+    .tsa-airline-logo{
+        width:42px;
+        height:42px;
+        flex:0 0 42px;
+        border-radius:14px;
+        display:flex;
+        align-items:center;
+        justify-content:center;
+        background:#eef7f3;
+        border:1px solid #dce9e3;
+        color:#0f766e;
+        font-size:13px;
+        font-weight:900;
+        letter-spacing:.03em;
+    }
+
+    .tsa-airline-name{
+        font-size:18px!important;
+        line-height:1.25!important;
+        max-width:430px;
+        white-space:nowrap;
+        overflow:hidden;
+        text-overflow:ellipsis;
+    }
+
+    .tsa-airline-meta{
+        margin-top:3px!important;
+        font-size:13px!important;
+    }
+
+    .tsa-price-rail{
+        display:none!important;
+    }
+
+    .tsa-timeline{
+        grid-template-columns:145px minmax(180px,1fr) 145px!important;
+        padding:16px 0!important;
+    }
+
+    .tsa-time-block strong{
+        font-size:24px!important;
+        letter-spacing:-.02em;
+    }
+
+    .tsa-time-block span{
+        display:block;
+        margin-top:2px;
+        font-size:15px!important;
+        font-weight:800;
+        color:#1e3830!important;
+    }
+
+    .tsa-time-block small{
+        display:block;
+        margin-top:3px;
+        font-size:12px;
+        color:#78877f;
+    }
+
+    .tsa-timeline-center strong{
+        font-size:15px!important;
+        color:#40564e!important;
+    }
+
+    .tsa-timeline-center span{
+        display:inline-flex;
+        margin-top:2px;
+        padding:5px 10px;
+        border-radius:999px;
+        background:#f2f7f4;
+        color:#0f766e;
+        font-size:12px!important;
+        font-weight:800;
+    }
+
+    .tsa-timeline-line{
+        position:relative;
+        height:2px!important;
+        background:#c9d8d1!important;
+        margin:9px 34px!important;
+    }
+
+    .tsa-timeline-line:before,
+    .tsa-timeline-line:after{
+        content:"";
+        position:absolute;
+        top:50%;
+        width:8px;
+        height:8px;
+        border-radius:50%;
+        background:#0f766e;
+        transform:translateY(-50%);
+    }
+
+    .tsa-timeline-line:before{
+        left:-2px;
+    }
+
+    .tsa-timeline-line:after{
+        right:-2px;
+    }
+
+    .tsa-card-footer{
+        padding-top:14px!important;
+        align-items:flex-end!important;
+    }
+
+    .tsa-pill-row{
+        gap:7px!important;
+    }
+
+    .tsa-pill{
+        padding:7px 10px!important;
+        font-size:12px!important;
+        border:1px solid #e0ebe5;
+        background:#fafcfb!important;
+    }
+
+    .tsa-card-actions .tsa-secondary-btn{
+        border-radius:14px!important;
+        padding:11px 13px!important;
+        font-size:13px!important;
+    }
+
+    .tsa-result-aside{
+        background:linear-gradient(180deg,#fbfdfc 0%,#f4faf7 100%);
+        border-left:1px solid #e1ece7!important;
+        padding:20px 18px!important;
+        gap:12px!important;
+        align-items:stretch;
+    }
+
+    .tsa-result-aside .price{
+        font-size:34px!important;
+        letter-spacing:-.04em;
+        color:#10251f!important;
+    }
+
+    .tsa-result-aside .currency{
+        font-size:13px!important;
+        font-weight:800;
+        color:#50645c!important;
+    }
+
+    .tsa-ui-currency-note{
+        margin-top:-4px!important;
+        padding:8px 10px;
+        border-radius:12px;
+        background:#fff8ec;
+        color:#76520d!important;
+        font-size:11px!important;
+    }
+
+    .tsa-result-aside .tsa-primary-btn{
+        margin-top:2px;
+        border-radius:15px!important;
+        font-size:15px!important;
+        padding:14px 10px!important;
+        box-shadow:0 14px 28px rgba(15,118,110,.18);
+    }
+
+    .tsa-support-card{
+        padding:18px!important;
+    }
+
+    .tsa-support-card .icon{
+        width:52px!important;
+        height:52px!important;
+        border-radius:18px!important;
+        font-size:24px!important;
+    }
+
+    .tsa-support-card h3{
+        font-size:16px!important;
+    }
+
+    .tsa-support-card p{
+        font-size:13px!important;
+    }
+
+    .tsa-modal-shell{
+        border-radius:24px!important;
+        max-height:88vh;
+        overflow:auto;
+    }
+
+    .tsa-modal-head h3{
+        font-size:24px!important;
+    }
+
+    .tsa-modal-card{
+        border-radius:20px!important;
+    }
+
+    .tsa-modal-submit{
+        border-radius:15px!important;
+        padding:14px 16px!important;
+    }
+
+    @media (max-width:1280px){
+        .tsa-layout{
+            grid-template-columns:220px minmax(0,1fr)!important;
+        }
+
+        .tsa-support-card{
+            display:none!important;
+        }
+
+        .tsa-search-strip{
+            grid-template-columns:1fr 1fr 1fr!important;
+        }
+
+        .tsa-search-submit{
+            min-height:62px;
+        }
+    }
+
+    @media (max-width:991px){
+        .tsa-topnav{
+            flex-wrap:wrap;
+        }
+
+        .tsa-search-strip{
+            grid-template-columns:1fr!important;
+        }
+
+        .tsa-layout{
+            grid-template-columns:1fr!important;
+        }
+
+        .tsa-sidebar{
+            order:2;
+        }
+
+        .tsa-result-card{
+            grid-template-columns:1fr!important;
+        }
+
+        .tsa-result-aside{
+            border-left:0!important;
+            border-top:1px solid #e1ece7!important;
+        }
+
+        .tsa-timeline{
+            grid-template-columns:1fr!important;
+            gap:14px;
+        }
+
+        .tsa-timeline-center{
+            order:2;
+        }
+
+        .tsa-time-block[style]{
+            text-align:left!important;
+        }
+
+        .tsa-airline-row,
+        .tsa-card-footer{
+            align-items:flex-start!important;
+            flex-direction:column;
+        }
+
+        .tsa-card-actions{
+            width:100%;
+            justify-content:stretch!important;
+        }
+
+        .tsa-card-actions .tsa-secondary-btn{
+            width:100%;
+        }
+    }
+</style>
+@endpush
+
+
+@push('css')
+<style id="tsa-results-final-touches-css">
+    .tsa-sort-tabs{
+        display:grid!important;
+        grid-template-columns:repeat(4,minmax(0,1fr));
+        gap:10px!important;
+        padding:8px!important;
+        border:1px solid #dce9e3!important;
+        background:#fff!important;
+        box-shadow:0 14px 30px rgba(15,50,34,.05)!important;
+    }
+
+    .tsa-sort-tabs form{
+        margin:0!important;
+        min-width:0;
+    }
+
+    .tsa-sort-tab{
+        width:100%;
+        border:1px solid #dce9e3!important;
+        border-radius:15px!important;
+        background:#f8fbfa!important;
+        color:#12251f!important;
+        box-shadow:none!important;
+        font-size:13px!important;
+        font-weight:800!important;
+        white-space:nowrap;
+    }
+
+    .tsa-sort-tab.is-active,
+    .tsa-sort-tab.active{
+        border-color:#0f766e!important;
+        background:#0f766e!important;
+        color:#fff!important;
+        box-shadow:0 12px 24px rgba(15,118,110,.18)!important;
+    }
+
+    .tsa-sort-tab:hover{
+        border-color:#0f766e!important;
+        color:#0f766e!important;
+    }
+
+    .tsa-sort-tab.is-active:hover,
+    .tsa-sort-tab.active:hover{
+        color:#fff!important;
+    }
+
+    .tsa-day-tabs{
+        overflow:hidden;
+        border:1px solid #dce9e3!important;
+        background:#fff!important;
+        box-shadow:0 14px 30px rgba(15,50,34,.05)!important;
+    }
+
+    .tsa-day-tab{
+        border:0!important;
+        border-right:1px solid #e3eee8!important;
+        background:#fff!important;
+        color:#153229!important;
+        font-weight:900!important;
+    }
+
+    .tsa-day-tab:last-child{
+        border-right:0!important;
+    }
+
+    .tsa-day-tab.is-active,
+    .tsa-day-tab.active{
+        background:#0f766e!important;
+        color:#fff!important;
+    }
+
+    .tsa-search-summary{
+        box-shadow:0 14px 30px rgba(15,50,34,.05)!important;
+    }
+
+    .tsa-result-list{
+        margin-bottom:80px;
+    }
+
+    .bravo_footer,
+    .bravo-newsletter,
+    .footer,
+    footer{
+        display:none!important;
+    }
+
+    @media (max-width:991px){
+        .tsa-sort-tabs{
+            grid-template-columns:repeat(2,minmax(0,1fr));
+        }
+    }
+</style>
+@endpush
+
+
+@push('css')
+<style id="tsa-results-turkey-ui-v1-css">
+    /* Booking Core ana menüsü kalacak; uçuş içindeki ikinci Diana menüsü gizlenir */
+    .tsa-topbar{
+        display:none!important;
+    }
+
+    .tsa-flight-shell{
+        padding-top:34px!important;
+    }
+
+    /* Tema breadcrumb alanını uçuş sayfasında sadeleştir */
+    .bravo-breadcrumb,
+    .breadcrumb-page,
+    .page-template-content .bravo-breadcrumb{
+        display:none!important;
+    }
+
+    /* Sonuç sayfasında Booking Core newsletter/footer alanlarını kesin gizle */
+    .bravo_footer,
+    .bravo_footer *,
+    .bravo-newsletter,
+    .bravo-newsletter *,
+    .bravo-subscribe-form,
+    .bravo-subscribe-form *,
+    .newsletter,
+    .newsletter *,
+    .footer,
+    .footer *,
+    footer,
+    footer *{
+        display:none!important;
+        visibility:hidden!important;
+        height:0!important;
+        min-height:0!important;
+        max-height:0!important;
+        overflow:hidden!important;
+        padding:0!important;
+        margin:0!important;
+        border:0!important;
+    }
+
+    body{
+        background:#f7faf8!important;
+    }
+
+    .tsa-flight-shell{
+        background:
+            radial-gradient(circle at top left, rgba(0,85,130,.055), transparent 32%),
+            linear-gradient(135deg,#fbf8f1 0%,#f7f8f4 42%,#eef7f3 100%)!important;
+    }
+
+    .tsa-sandbox-warning{
+        border-color:#f1c67c!important;
+        background:#fff8ed!important;
+        color:#704600!important;
+    }
+
+    .tsa-sandbox-warning strong{
+        background:#f59e0b!important;
+    }
+
+    .tsa-search-submit,
+    .tsa-sort-tab.is-active,
+    .tsa-sort-tab.active,
+    .tsa-day-tab.is-active,
+    .tsa-day-tab.active,
+    .tsa-result-aside .tsa-primary-btn,
+    .tsa-modal-submit{
+        background:#137f73!important;
+    }
+
+    .tsa-search-submit:hover,
+    .tsa-result-aside .tsa-primary-btn:hover,
+    .tsa-modal-submit:hover{
+        background:#0f6f65!important;
+    }
+
+    .tsa-airline-logo,
+    .tsa-timeline-line:before,
+    .tsa-timeline-line:after{
+        color:#137f73!important;
+        background:#eaf7f4!important;
+        border-color:#cfe8e1!important;
+    }
+
+    .tsa-time-block strong,
+    .tsa-result-aside .price,
+    .tsa-airline-name,
+    .tsa-route{
+        color:#0f2430!important;
+    }
+
+    .tsa-ui-currency-note{
+        background:#eef7f3!important;
+        color:#137f73!important;
+        font-weight:800;
+    }
+
+    .tsa-result-list{
+        margin-bottom:110px!important;
+    }
+
+    .tsa-result-card:last-child{
+        margin-bottom:40px!important;
+    }
+</style>
+@endpush
+
+
+
+
+@push('css')
+@if(app()->getLocale() === 'ar')
+<style id="tsa-flight-rtl-css">
+    .tsa-flight-shell{
+        direction:rtl;
+    }
+    .tsa-flight-shell .tsa-search-field,
+    .tsa-flight-shell .tsa-route,
+    .tsa-flight-shell .tsa-route-meta,
+    .tsa-flight-shell .tsa-airline-row,
+    .tsa-flight-shell .tsa-card-footer,
+    .tsa-flight-shell .tsa-support-card,
+    .tsa-flight-shell .tsa-filter-card{
+        text-align:right;
+    }
+    .tsa-flight-shell .tsa-result-card{
+        direction:rtl;
+    }
+    .tsa-flight-shell .tsa-result-aside{
+        border-left:0!important;
+        border-right:1px solid #e1ece7!important;
+    }
+    .tsa-flight-shell .tsa-time-block[style]{
+        text-align:left!important;
+    }
+    .tsa-flight-shell .tsa-card-actions{
+        justify-content:flex-start;
+    }
+</style>
+@endif
+@endpush
+
+
+
+
+@push('css')
+<style id="tsa-flight-currency-binding-source-ok">
+    .tsa-flight-shell{--tsa-flight-currency-binding:booking-core-current-currency;}
+</style>
+@endpush
+
+
+@push('css')
+<style id="tsa-flight-footer-css-only-hide-v1">
+    body:has(.tsa-flight-shell) .bravo_footer,
+    body:has(.tsa-flight-shell) .bravo_footer *,
+    body:has(.tsa-flight-shell) .bravo-newsletter,
+    body:has(.tsa-flight-shell) .bravo-newsletter *,
+    body:has(.tsa-flight-shell) .bravo-subscribe-form,
+    body:has(.tsa-flight-shell) .bravo-subscribe-form *,
+    body:has(.tsa-flight-shell) .newsletter,
+    body:has(.tsa-flight-shell) .newsletter *,
+    body:has(.tsa-flight-shell) .footer,
+    body:has(.tsa-flight-shell) .footer *,
+    body:has(.tsa-flight-shell) footer,
+    body:has(.tsa-flight-shell) footer *,
+    body:has(.tsa-flight-shell) [class*="footer"],
+    body:has(.tsa-flight-shell) [class*="footer"] *,
+    body:has(.tsa-flight-shell) [class*="newsletter"],
+    body:has(.tsa-flight-shell) [class*="newsletter"] *,
+    body:has(.tsa-flight-shell) [class*="subscribe"],
+    body:has(.tsa-flight-shell) [class*="subscribe"] *{
+        display:none!important;
+        visibility:hidden!important;
+        height:0!important;
+        min-height:0!important;
+        max-height:0!important;
+        overflow:hidden!important;
+        padding:0!important;
+        margin:0!important;
+        border:0!important;
+    }
+</style>
+@endpush
+
+
+@push('css')
+<style id="tsa-flight-footer-css-only-hide-v2">
+    body:has(.tsa-flight-shell) .bravo_footer,
+    body:has(.tsa-flight-shell) .bravo_footer *,
+    body:has(.tsa-flight-shell) .bravo-newsletter,
+    body:has(.tsa-flight-shell) .bravo-newsletter *,
+    body:has(.tsa-flight-shell) .bravo-subscribe-form,
+    body:has(.tsa-flight-shell) .bravo-subscribe-form *,
+    body:has(.tsa-flight-shell) .newsletter,
+    body:has(.tsa-flight-shell) .newsletter *,
+    body:has(.tsa-flight-shell) .footer,
+    body:has(.tsa-flight-shell) .footer *,
+    body:has(.tsa-flight-shell) footer,
+    body:has(.tsa-flight-shell) footer *{
+        display:none!important;
+        visibility:hidden!important;
+        height:0!important;
+        min-height:0!important;
+        max-height:0!important;
+        overflow:hidden!important;
+        padding:0!important;
+        margin:0!important;
+        border:0!important;
     }
 </style>
 @endpush
