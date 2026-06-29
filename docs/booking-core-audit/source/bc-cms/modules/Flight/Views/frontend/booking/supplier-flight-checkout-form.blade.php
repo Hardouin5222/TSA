@@ -113,7 +113,23 @@
         </div>
     </div>
 
-    @include('Booking::frontend.booking.checkout-payment')
+    @php
+        $tsaSupplierFlightGateways = $gateways ?? [];
+
+        if (!empty($service) && method_exists($service, 'filterCheckoutGateways')) {
+            $tsaSupplierFlightGateways = $service->filterCheckoutGateways($tsaSupplierFlightGateways);
+        }
+
+        $gateways = $tsaSupplierFlightGateways;
+    @endphp
+
+    @if(empty($gateways))
+        <div class="alert alert-warning mt-4">
+            {{ __('No payment method is available for this flight. Please contact support.') }}
+        </div>
+    @else
+        @include('Booking::frontend.booking.checkout-payment')
+    @endif
 
     <div class="form-group mt-3">
         <label>
@@ -122,8 +138,8 @@
         </label>
     </div>
 
-    <button type="submit" class="btn btn-primary btn-lg btn-block">
-        {{ __('Continue to payment') }}
+    <button type="submit" class="btn btn-primary btn-lg btn-block" @if(empty($gateways)) disabled @endif>
+        {{ empty($gateways) ? __('No payment method is available') : __('Continue to payment') }}
     </button>
     </form>
 

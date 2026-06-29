@@ -56,6 +56,10 @@ class SupplierFlightService
             return response()->json(['status' => 0, 'message' => __($message)], 422);
         }
 
+        if ($message = $this->validatePaymentGatewayForFlight($offer, $request)) {
+            return response()->json(['status' => 0, 'message' => __($message)], 422);
+        }
+
         $booking->total = $quote->confirmed_total_amount;
         $booking->currency = $quote->confirmed_currency;
         $booking->addMeta('tsa_supplier_quote_uuid', $quote->quote_uuid);
@@ -112,6 +116,112 @@ class SupplierFlightService
             'arrival_at' => optional($offer->arrival_at)->toDateTimeString(),
             'payload' => $offer->payload_json,
         ];
+    }
+
+    public function filterCheckoutGateways(SupplierOffer $offer, array $gateways): array
+    {
+        $allowed = $this->allowedPaymentGatewayKeys($offer);
+
+        if (empty($allowed)) {
+            return [];
+        }
+
+        $filtered = [];
+
+        foreach ($gateways as $key => $gateway) {
+            if (!in_array((string) $key, $allowed, true)) {
+                continue;
+            }
+
+            if (!$gateway || !method_exists($gateway, 'isAvailable') || !$gateway->isAvailable()) {
+                continue;
+            }
+
+            $filtered[$key] = $gateway;
+        }
+
+        return $filtered;
+    }
+
+    public function allowedPaymentGatewayKeys(SupplierOffer $offer): array
+    {
+        $explicit = $this->parseGatewayList(env('TSA_SUPPLIER_FLIGHT_ALLOWED_PAYMENT_GATEWAYS'));
+
+        if (!empty($explicit)) {
+            return $this->sanitizePaymentGatewayKeys($explicit);
+        }
+
+        if (app()->environment('production')) {
+            return $this->sanitizePaymentGatewayKeys(
+                $this->parseGatewayList(env('TSA_SUPPLIER_FLIGHT_LIVE_PAYMENT_GATEWAYS'))
+            );
+        }
+
+        $testGateways = $this->parseGatewayList(env('TSA_SUPPLIER_FLIGHT_TEST_PAYMENT_GATEWAYS', 'tsa_test'));
+
+        if (empty($testGateways)) {
+            $testGateways = ['tsa_test'];
+        }
+
+        if ($this->truthy(env('TSA_ENABLE_OFFLINE_PAYMENT_FOR_FLIGHTS'))) {
+            $testGateways[] = 'offline';
+        }
+
+        return $this->sanitizePaymentGatewayKeys($testGateways);
+    }
+
+    protected function validatePaymentGatewayForFlight(SupplierOffer $offer, Request $request): ?string
+    {
+        $gatewayKey = (string) $request->input('payment_gateway', '');
+        $allowed = $this->allowedPaymentGatewayKeys($offer);
+
+        if (empty($allowed)) {
+            return 'No payment method is available for this flight. Please contact support.';
+        }
+
+        if (!$gatewayKey || !in_array($gatewayKey, $allowed, true)) {
+            return 'This payment method is not available for flights.';
+        }
+
+        $gateways = get_payment_gateways();
+        $gateway = $gateways[$gatewayKey] ?? null;
+
+        if (!$gateway || !method_exists($gateway, 'isAvailable') || !$gateway->isAvailable()) {
+            return 'This payment method is not available for flights.';
+        }
+
+        return null;
+    }
+
+    protected function parseGatewayList($value): array
+    {
+        if (!$value) {
+            return [];
+        }
+
+        if (is_array($value)) {
+            return $value;
+        }
+
+        return preg_split('/[\s,|]+/', (string) $value, -1, PREG_SPLIT_NO_EMPTY) ?: [];
+    }
+
+    protected function sanitizePaymentGatewayKeys(array $keys): array
+    {
+        $keys = array_map(static function ($key) {
+            return trim((string) $key);
+        }, $keys);
+
+        $keys = array_values(array_unique(array_filter($keys)));
+
+        return array_values(array_filter($keys, static function ($key) {
+            return $key !== 'offline' || app()->environment('local') || app()->environment('testing');
+        }));
+    }
+
+    protected function truthy($value): bool
+    {
+        return filter_var($value, FILTER_VALIDATE_BOOLEAN);
     }
 
     protected function validateQuoteForPayment(SupplierOffer $offer, ?SupplierQuote $quote, Booking $booking): ?string

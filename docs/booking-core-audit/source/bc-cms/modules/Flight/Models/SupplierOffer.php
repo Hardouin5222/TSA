@@ -86,6 +86,11 @@ class SupplierOffer extends BaseModel
         return app(SupplierFlightService::class)->filterCheckoutValidate($this, $request, $rules);
     }
 
+    public function filterCheckoutGateways(array $gateways): array
+    {
+        return app(SupplierFlightService::class)->filterCheckoutGateways($this, $gateways);
+    }
+
     public function beforeCheckout($request, $booking)
     {
         return app(SupplierFlightService::class)->beforeCheckout($this, $request, $booking);
