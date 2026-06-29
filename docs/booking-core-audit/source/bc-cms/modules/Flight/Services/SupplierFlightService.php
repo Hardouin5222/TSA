@@ -51,11 +51,9 @@ class SupplierFlightService
     public function beforeCheckout(SupplierOffer $offer, Request $request, Booking $booking)
     {
         $quote = $this->resolveQuote($offer, $request, $booking);
-        if (!$quote) {
-            return response()->json(['status' => 0, 'message' => __('Flight quote not found')], 422);
-        }
-        if ($quote->isExpired()) {
-            return response()->json(['status' => 0, 'message' => __('This flight price has expired. Please search again.')], 422);
+
+        if ($message = $this->validateQuoteForPayment($offer, $quote, $booking)) {
+            return response()->json(['status' => 0, 'message' => __($message)], 422);
         }
 
         $booking->total = $quote->confirmed_total_amount;
@@ -114,6 +112,47 @@ class SupplierFlightService
             'arrival_at' => optional($offer->arrival_at)->toDateTimeString(),
             'payload' => $offer->payload_json,
         ];
+    }
+
+    protected function validateQuoteForPayment(SupplierOffer $offer, ?SupplierQuote $quote, Booking $booking): ?string
+    {
+        if (!$quote) {
+            return 'Flight quote not found';
+        }
+
+        if ($booking->object_model !== 'tsa_supplier_flight') {
+            return 'This booking is no longer payable. Please refresh your booking.';
+        }
+
+        if (!in_array($booking->status, ['draft', 'unpaid'], true)) {
+            return 'This booking is no longer payable. Please refresh your booking.';
+        }
+
+        if ((int) $booking->object_id !== (int) $offer->id) {
+            return 'This flight quote does not match your booking. Please search again.';
+        }
+
+        if ((int) $quote->offer_id !== (int) $offer->id || (int) $quote->offer_id !== (int) $booking->object_id) {
+            return 'This flight quote does not match your booking. Please search again.';
+        }
+
+        if (!in_array($quote->status, ['quoted', 'checkout_started'], true)) {
+            return 'This flight quote is not ready for payment. Please search again.';
+        }
+
+        if ($quote->isExpired()) {
+            return 'This flight price has expired. Please search again.';
+        }
+
+        if ($quote->price_changed) {
+            return 'This flight price has changed. Please review the latest offer before payment.';
+        }
+
+        if (empty($quote->confirmed_currency) || (float) $quote->confirmed_total_amount <= 0) {
+            return 'Flight price could not be confirmed. Please search again.';
+        }
+
+        return null;
     }
 
     protected function resolveQuote(SupplierOffer $offer, Request $request, ?Booking $booking = null): ?SupplierQuote
