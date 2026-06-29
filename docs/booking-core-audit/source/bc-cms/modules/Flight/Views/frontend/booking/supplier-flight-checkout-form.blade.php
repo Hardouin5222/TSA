@@ -2,10 +2,7 @@
     @csrf
     <input type="hidden" name="code" value="{{ $booking->code }}">
     <input type="hidden" name="tsa_quote_uuid" value="{{ $booking->getMeta('tsa_supplier_quote_uuid') }}">
-    {{-- TSA TEST PAYMENT DEFAULTS - sadece test VM için --}}
-    <input type="hidden" name="payment_gateway" value="offline">
     <input type="hidden" name="how_to_pay" value="full">
-    <input type="hidden" name="term_conditions" value="1">
 
     @php
     $quote = \Modules\Flight\Models\SupplierQuote::where('quote_uuid', $booking->getMeta('tsa_supplier_quote_uuid'))->first();
@@ -172,7 +169,7 @@
                     }
                 },
                 error: function (xhr) {
-                    var message = 'Checkout could not be completed. Please try again.';
+                    var message = @json(__('Checkout could not be completed. Please try again.'));
 
                     if (xhr.responseJSON) {
                         if (xhr.responseJSON.message) {
